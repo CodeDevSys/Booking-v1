@@ -1,6 +1,30 @@
 # Booking MVP — Deployment
 
-## Live (Render) — primary
+## Long-term presentation link — GitHub Pages
+
+Stable URL:
+
+**https://codedevsys.github.io/Booking-v1/**
+
+| Page | URL |
+|------|-----|
+| Booking | https://codedevsys.github.io/Booking-v1/ |
+| Admin | https://codedevsys.github.io/Booking-v1/admin.html |
+
+This repository includes a GitHub Actions workflow:
+
+`Deploy presentation site to GitHub Pages`
+
+After this branch is merged into `main`, make sure GitHub Pages is configured:
+
+1. GitHub repo → **Settings** → **Pages**
+2. **Build and deployment** → **Source** = `GitHub Actions`
+3. Run the workflow manually, or push to `main`
+
+GitHub Pages is a static presentation deployment. Without a connected backend,
+appointments are saved locally in the visitor's browser as demo data.
+
+## Live backend (Render)
 
 **https://booking-mvp.onrender.com**
 

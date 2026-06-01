@@ -2,7 +2,7 @@
 
 Salon appointment booking — customer booking flow and manager admin.
 
-## Live (Render)
+## Live links
 
 - **Booking:** https://booking-mvp.onrender.com  
 - **Admin:** https://booking-mvp.onrender.com/admin.html  
