@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: booking-mvp
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: npm install --omit=optional
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: ADMIN_USER
+        value: admin
+      - key: ADMIN_KEY
+        value: "123456"
+      - key: SERVE_STATIC
+        value: "true"

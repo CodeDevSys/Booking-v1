@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manager Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="bg-gradient" aria-hidden="true"></div>
+
+  <main class="app" id="manager-app">
+    <header class="header">
+      <div class="logo">✂</div>
+      <div>
+        <h1>Appointments</h1>
+        <p class="subtitle"><a href="./index.html" class="muted-link">Back to booking</a></p>
+      </div>
+    </header>
+
+    <section class="card" id="login-card">
+      <h2>Manager sign in</h2>
+      <p class="hint">Use the management username and password.</p>
+      <form id="login-form" class="form" action="#" method="post">
+        <label>
+          Username
+          <input type="text" id="admin-user" required autocomplete="username" placeholder="admin" />
+        </label>
+        <label>
+          Password
+          <input type="password" id="admin-key" required autocomplete="current-password" placeholder="Management password" />
+        </label>
+        <p id="admin-status" class="admin-status" role="status"></p>
+        <button type="button" class="btn primary" id="admin-login-btn">View appointments</button>
+      </form>
+    </section>
+
+    <section class="card" id="list-card" hidden>
+      <div class="admin-toolbar">
+        <button type="button" class="btn primary small" id="refresh-btn">Refresh</button>
+        <button type="button" class="btn ghost small" id="logout-btn">Sign out</button>
+        <span class="hint" id="count-label"></span>
+      </div>
+      <div id="bookings-container"><p class="loading">Loading…</p></div>
+    </section>
+  </main>
+
+  <script src="./script.js"></script>
+</body>
+</html>
