@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const DEFAULT_SERVICE = "Cutting Hair";
+  const DEFAULT_SERVICE = "Haare schneiden";
   const SLOT_MINUTES = 60;
   const BUSINESS_START = 9;
   const BUSINESS_END = 17;
@@ -36,7 +36,7 @@
 
   function formatDateLabel(dateStr) {
     const d = new Date(dateStr + "T12:00:00");
-    return d.toLocaleDateString("en-US", {
+    return d.toLocaleDateString("de-DE", {
       weekday: "long",
       month: "long",
       day: "numeric",
@@ -80,9 +80,9 @@
       data = text ? JSON.parse(text) : {};
     } catch {
       if (text.startsWith("<!DOCTYPE") || text.startsWith("<html")) {
-        throw new Error("API not available");
+        throw new Error("API nicht verfügbar");
       }
-      throw new Error("Invalid server response");
+      throw new Error("Ungültige Serverantwort");
     }
     return { res, data };
   }
@@ -111,7 +111,7 @@
     return slots;
   }
 
-  function renderSlots(slots, emptyMessage = "No appointment times are available for this date. Please choose another date.") {
+  function renderSlots(slots, emptyMessage = "Für dieses Datum sind keine Termine verfügbar. Bitte wähle ein anderes Datum.") {
     const grid = $("#slots-grid");
     const timeNext = $("#time-next");
     grid.innerHTML = "";
@@ -157,16 +157,16 @@
 
       if (!state.date) {
         next.disabled = true;
-        renderSlots([], "Select a date to see available times.");
+        renderSlots([], "Wähle ein Datum, um verfügbare Zeiten zu sehen.");
         return;
       }
 
       const day = new Date(state.date + "T12:00:00").getDay();
       if (day === 0 || day === 6) {
-        hint.textContent = "Weekends are unavailable. Please pick a weekday.";
+        hint.textContent = "Am Wochenende sind keine Termine verfügbar. Bitte wähle einen Wochentag.";
         next.disabled = true;
         state.date = null;
-        renderSlots([], "Pick an available weekday to see times.");
+        renderSlots([], "Wähle einen verfügbaren Wochentag, um Zeiten zu sehen.");
         return;
       }
 
@@ -183,7 +183,7 @@
     if (!grid || !label || !dateStr) return;
 
     label.textContent = formatDateLabel(dateStr);
-    grid.innerHTML = '<p class="loading">Loading times…</p>';
+    grid.innerHTML = '<p class="loading">Zeiten werden geladen…</p>';
     state.slot = null;
     const timeNext = $("#time-next");
     if (timeNext) timeNext.disabled = true;
@@ -195,13 +195,13 @@
         tzOffset: String(new Date().getTimezoneOffset()),
       });
       const { res, data } = await apiFetch(`/api/slots?${params.toString()}`);
-      if (!res.ok) throw new Error(data.error || "Failed to load slots");
+      if (!res.ok) throw new Error(data.error || "Zeiten konnten nicht geladen werden");
       slots = Array.isArray(data.slots) ? data.slots : [];
       state.offlineMode = false;
     } catch {
       slots = generateClientSlots(dateStr);
       state.offlineMode = true;
-      showError("Demo mode: times shown locally. Connect the API to save on the server.");
+      showError("Demo-Modus: Zeiten werden lokal angezeigt. Verbinde die API, um Termine auf dem Server zu speichern.");
     }
 
     if (dateStr !== state.date) return;
@@ -214,8 +214,8 @@
     el.innerHTML = `
       <dl>
         <dt>Service</dt><dd>${state.service}</dd>
-        <dt>Date</dt><dd>${formatDateLabel(state.date)}</dd>
-        <dt>Time</dt><dd>${state.slot.label}</dd>
+        <dt>Datum</dt><dd>${formatDateLabel(state.date)}</dd>
+        <dt>Uhrzeit</dt><dd>${state.slot.label}</dd>
       </dl>
     `;
   }
@@ -223,7 +223,7 @@
   async function submitBooking(e) {
     e.preventDefault();
     if (!state.slot) {
-      showError("Please choose an appointment time before confirming.");
+      showError("Bitte wähle vor dem Bestätigen eine Uhrzeit aus.");
       return;
     }
     const form = e.target;
@@ -239,7 +239,7 @@
     };
 
     btn.disabled = true;
-    btn.textContent = "Booking…";
+    btn.textContent = "Wird gebucht…";
 
     try {
       if (!state.offlineMode) {
@@ -248,7 +248,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        if (!res.ok) throw new Error(data.error || "Booking failed");
+        if (!res.ok) throw new Error(data.error || "Buchung fehlgeschlagen");
       } else {
         const list = JSON.parse(localStorage.getItem("bookings") || "[]");
         list.push({ ...payload, id: Date.now(), savedAt: new Date().toISOString() });
@@ -256,16 +256,16 @@
       }
 
       const msg = state.offlineMode
-        ? `${state.service} on ${formatDateLabel(state.date)} at ${state.slot.label}. Saved on this device (demo).`
-        : `${state.service} on ${formatDateLabel(state.date)} at ${state.slot.label}. Confirmation sent to ${payload.email}.`;
+        ? `${state.service} am ${formatDateLabel(state.date)} um ${state.slot.label}. Auf diesem Gerät gespeichert (Demo).`
+        : `${state.service} am ${formatDateLabel(state.date)} um ${state.slot.label}. Bestätigung an ${payload.email} gesendet.`;
 
       $("#success-message").textContent = msg;
       showStep("success");
     } catch (err) {
-      showError(err.message || "Booking failed");
+      showError(err.message || "Buchung fehlgeschlagen");
     } finally {
       btn.disabled = false;
-      btn.textContent = "Confirm booking";
+      btn.textContent = "Buchung bestätigen";
     }
   }
 
@@ -293,7 +293,7 @@
         if (next === 3 && state.date) await loadSlots();
         if (next === 4) {
           if (!state.slot) {
-            showError("Please choose an appointment time before continuing.");
+            showError("Bitte wähle vor dem Fortfahren eine Uhrzeit aus.");
             return;
           }
           updateSummary();
@@ -328,7 +328,7 @@
 
   function formatBookingDate(start) {
     if (!start) return "—";
-    return new Date(start).toLocaleDateString("en-US", {
+    return new Date(start).toLocaleDateString("de-DE", {
       weekday: "short",
       month: "short",
       day: "numeric",
@@ -338,7 +338,7 @@
 
   function formatBookingTime(start) {
     if (!start) return "—";
-    return new Date(start).toLocaleTimeString("en-US", {
+    return new Date(start).toLocaleTimeString("de-DE", {
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -377,13 +377,13 @@
     if (!container) return;
 
     if (!bookings.length) {
-      container.innerHTML = '<p class="empty">No booked appointments yet.</p>';
-      if (count) count.textContent = "0 appointments";
+      container.innerHTML = '<p class="empty">Noch keine Termine gebucht.</p>';
+      if (count) count.textContent = "0 Termine";
       return;
     }
 
     if (count) {
-      count.textContent = `${bookings.length} appointment${bookings.length === 1 ? "" : "s"}`;
+      count.textContent = `${bookings.length} Termin${bookings.length === 1 ? "" : "e"}`;
     }
 
     const rows = bookings
@@ -395,13 +395,13 @@
         <td>${escapeHtml(b.name || "—")}</td>
         <td>${escapeHtml(b.email || "—")}</td>
         <td>${escapeHtml(b.notes || "—")}</td>
-        <td><button type="button" class="btn ghost small delete-booking-btn" data-id="${encodeURIComponent(String(b.id || ""))}" data-source="${escapeHtml(b.source || "server")}" ${b.id ? "" : "disabled"}>Delete</button></td>
+        <td><button type="button" class="btn ghost small delete-booking-btn" data-id="${encodeURIComponent(String(b.id || ""))}" data-source="${escapeHtml(b.source || "server")}" ${b.id ? "" : "disabled"}>Löschen</button></td>
       </tr>`
       )
       .join("");
 
     container.innerHTML = `<table class="bookings-table">
-        <thead><tr><th>Date</th><th>Time</th><th>Service</th><th>Customer</th><th>Email</th><th>Notes</th><th>Action</th></tr></thead>
+        <thead><tr><th>Datum</th><th>Uhrzeit</th><th>Service</th><th>Kunde</th><th>E-Mail</th><th>Notizen</th><th>Aktion</th></tr></thead>
         <tbody>${rows}</tbody></table>`;
   }
 
@@ -417,7 +417,7 @@
     const key = sessionStorage.getItem(ADMIN_STORAGE) || "";
     const container = $("#bookings-container");
     if (!container) return;
-    container.innerHTML = '<p class="loading">Loading appointments…</p>';
+    container.innerHTML = '<p class="loading">Termine werden geladen…</p>';
 
     try {
       const params = new URLSearchParams({ user, key });
@@ -426,10 +426,10 @@
         sessionStorage.removeItem(ADMIN_USER_STORAGE);
         sessionStorage.removeItem(ADMIN_STORAGE);
         showAdminLogin();
-        setAdminStatus(data.error || "Wrong username or password.", "error");
+        setAdminStatus(data.error || "Falscher Benutzername oder falsches Passwort.", "error");
         return false;
       }
-      if (!res.ok) throw new Error(data.error || "Failed to load");
+      if (!res.ok) throw new Error(data.error || "Termine konnten nicht geladen werden");
       const bookings = mergeBookings(data.bookings || [], getLocalBookings());
       renderAdminBookings(bookings);
       setAdminStatus("", "");
@@ -439,7 +439,7 @@
       if (local.length) {
         renderAdminBookings(local);
         setAdminStatus(
-          "API unavailable — showing appointments saved in this browser.",
+          "API nicht verfügbar — zeige in diesem Browser gespeicherte Termine.",
           "error"
         );
         return true;
@@ -463,10 +463,10 @@
     const source = btn.dataset.source || "server";
     if (!id) return;
 
-    if (!window.confirm("Delete this appointment?")) return;
+    if (!window.confirm("Diesen Termin löschen?")) return;
 
     btn.disabled = true;
-    btn.textContent = "Deleting…";
+    btn.textContent = "Wird gelöscht…";
 
     try {
       if (source === "browser") {
@@ -478,13 +478,13 @@
         const { res, data } = await apiFetch(`/api/bookings?${params.toString()}`, {
           method: "DELETE",
         });
-        if (!res.ok) throw new Error(data.error || "Delete failed");
+        if (!res.ok) throw new Error(data.error || "Löschen fehlgeschlagen");
       }
       await loadAdminBookings();
     } catch (err) {
-      showError(err.message || "Delete failed");
+      showError(err.message || "Löschen fehlgeschlagen");
       btn.disabled = false;
-      btn.textContent = "Delete";
+      btn.textContent = "Löschen";
     }
   }
 
@@ -508,18 +508,18 @@
     const key = $("#admin-key")?.value.trim();
     const btn = $("#admin-login-btn");
     if (!user) {
-      setAdminStatus("Please enter the username.", "error");
+      setAdminStatus("Bitte gib den Benutzernamen ein.", "error");
       return;
     }
     if (!key) {
-      setAdminStatus("Please enter the password.", "error");
+      setAdminStatus("Bitte gib das Passwort ein.", "error");
       return;
     }
 
-    setAdminStatus("Checking…", "");
+    setAdminStatus("Wird geprüft…", "");
     if (btn) {
       btn.disabled = true;
-      btn.textContent = "Checking…";
+      btn.textContent = "Wird geprüft…";
     }
 
     sessionStorage.setItem(ADMIN_USER_STORAGE, user);
@@ -530,11 +530,11 @@
 
     if (btn) {
       btn.disabled = false;
-      btn.textContent = "View appointments";
+      btn.textContent = "Termine anzeigen";
     }
 
     if (ok) {
-      setAdminStatus("Signed in.", "ok");
+      setAdminStatus("Angemeldet.", "ok");
     }
   }
 

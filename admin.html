@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Manager Login</title>
+  <title>Manager-Login</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
@@ -16,35 +16,35 @@
     <header class="header">
       <div class="logo">✂</div>
       <div>
-        <h1>Appointments</h1>
-        <p class="subtitle"><a href="./index.html" class="muted-link">Back to booking</a></p>
+        <h1>Termine</h1>
+        <p class="subtitle"><a href="./index.html" class="muted-link">Zur Buchung</a></p>
       </div>
     </header>
 
     <section class="card" id="login-card">
-      <h2>Manager sign in</h2>
-      <p class="hint">Use the management username and password.</p>
+      <h2>Manager-Anmeldung</h2>
+      <p class="hint">Verwende den Management-Benutzernamen und das Passwort.</p>
       <form id="login-form" class="form" action="#" method="post">
         <label>
-          Username
+          Benutzername
           <input type="text" id="admin-user" required autocomplete="username" placeholder="admin" />
         </label>
         <label>
-          Password
-          <input type="password" id="admin-key" required autocomplete="current-password" placeholder="Management password" />
+          Passwort
+          <input type="password" id="admin-key" required autocomplete="current-password" placeholder="Management-Passwort" />
         </label>
         <p id="admin-status" class="admin-status" role="status"></p>
-        <button type="button" class="btn primary" id="admin-login-btn">View appointments</button>
+        <button type="button" class="btn primary" id="admin-login-btn">Termine anzeigen</button>
       </form>
     </section>
 
     <section class="card" id="list-card" hidden>
       <div class="admin-toolbar">
-        <button type="button" class="btn primary small" id="refresh-btn">Refresh</button>
-        <button type="button" class="btn ghost small" id="logout-btn">Sign out</button>
+        <button type="button" class="btn primary small" id="refresh-btn">Aktualisieren</button>
+        <button type="button" class="btn ghost small" id="logout-btn">Abmelden</button>
         <span class="hint" id="count-label"></span>
       </div>
-      <div id="bookings-container"><p class="loading">Loading…</p></div>
+      <div id="bookings-container"><p class="loading">Wird geladen…</p></div>
     </section>
   </main>
 

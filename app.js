@@ -45,7 +45,7 @@ app.get("/api/slots", async (req, res, next) => {
   try {
     const { date, tzOffset } = req.query;
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return res.status(400).json({ error: "date query required (YYYY-MM-DD)" });
+      return res.status(400).json({ error: "Datumsabfrage erforderlich (YYYY-MM-DD)" });
     }
     const slots = await calendar.getAvailableSlots(date, { timezoneOffset: tzOffset });
     res.json({ date, slots });
@@ -59,7 +59,7 @@ app.get("/api/bookings", async (req, res, next) => {
     const expectedUser = process.env.ADMIN_USER || DEFAULT_ADMIN_USER;
     const expected = process.env.ADMIN_KEY || DEFAULT_ADMIN_KEY;
     if (req.query.user !== expectedUser || req.query.key !== expected) {
-      return res.status(401).json({ error: "Wrong username or password." });
+      return res.status(401).json({ error: "Falscher Benutzername oder falsches Passwort." });
     }
     const bookings = await calendar.listBookings();
     res.json({ bookings });
@@ -73,7 +73,7 @@ app.delete("/api/bookings", async (req, res, next) => {
     const expectedUser = process.env.ADMIN_USER || DEFAULT_ADMIN_USER;
     const expected = process.env.ADMIN_KEY || DEFAULT_ADMIN_KEY;
     if (req.query.user !== expectedUser || req.query.key !== expected) {
-      return res.status(401).json({ error: "Wrong username or password." });
+      return res.status(401).json({ error: "Falscher Benutzername oder falsches Passwort." });
     }
     const deleted = await calendar.deleteBooking(req.query.id);
     res.json({ deleted });
@@ -86,10 +86,10 @@ app.post("/api/bookings", async (req, res, next) => {
   try {
     const { date, start, name, email, notes, service } = req.body;
     if (!date || !start || !name || !email) {
-      return res.status(400).json({ error: "date, start, name, and email are required" });
+      return res.status(400).json({ error: "Datum, Startzeit, Name und E-Mail sind erforderlich" });
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ error: "invalid email" });
+      return res.status(400).json({ error: "Ungültige E-Mail-Adresse" });
     }
     const booking = await calendar.createBooking({
       date,
@@ -109,7 +109,7 @@ app.post("/api/chat", async (req, res, next) => {
   try {
     const { message, context } = req.body;
     if (!message?.trim()) {
-      return res.status(400).json({ error: "message required" });
+      return res.status(400).json({ error: "Nachricht erforderlich" });
     }
     const result = await openai.parseBookingIntent(message.trim(), context);
     res.json(result);
@@ -120,7 +120,7 @@ app.post("/api/chat", async (req, res, next) => {
 
 app.use((err, _req, res, _next) => {
   console.error(err);
-  res.status(err.status || 500).json({ error: err.message || "Server error" });
+  res.status(err.status || 500).json({ error: err.message || "Serverfehler" });
 });
 
 module.exports = app;

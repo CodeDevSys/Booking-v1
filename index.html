@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Book an Appointment</title>
+  <title>Termin buchen</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
@@ -11,7 +11,7 @@
 </head>
 <body>
   <div id="js-warning" class="js-warning" hidden>
-    JavaScript did not load. Upload <strong>script.js</strong> to GitHub (same folder as index.html), then redeploy.
+    JavaScript wurde nicht geladen. Lade <strong>script.js</strong> zu GitHub hoch (in denselben Ordner wie index.html) und veröffentliche die App erneut.
   </div>
   <div class="bg-gradient" aria-hidden="true"></div>
 
@@ -19,83 +19,83 @@
     <header class="header">
       <div class="logo">✂</div>
       <div>
-        <h1>Book a salon appointment</h1>
-        <p class="subtitle">Mon–Fri · 1-hour salon appointments</p>
+        <h1>Salontermin buchen</h1>
+        <p class="subtitle">Mo–Fr · 1-stündige Salontermine</p>
       </div>
     </header>
 
     <section class="card" id="booking-card">
-      <ol class="steps" aria-label="Booking progress">
+      <ol class="steps" aria-label="Buchungsfortschritt">
         <li class="step active" data-step="1">Service</li>
-        <li class="step" data-step="2">Date</li>
-        <li class="step" data-step="3">Time</li>
+        <li class="step" data-step="2">Datum</li>
+        <li class="step" data-step="3">Uhrzeit</li>
         <li class="step" data-step="4">Details</li>
       </ol>
 
       <div class="panel active" id="panel-1">
-        <h2>Choose your hair service</h2>
+        <h2>Wähle deinen Haarservice</h2>
         <div class="service-grid">
-          <button type="button" class="service-btn selected" data-service="Cutting Hair">Cutting Hair</button>
-          <button type="button" class="service-btn" data-service="Styling Hair">Styling Hair</button>
-          <button type="button" class="service-btn" data-service="Coloring Hair">Coloring Hair</button>
+          <button type="button" class="service-btn selected" data-service="Haare schneiden">Haare schneiden</button>
+          <button type="button" class="service-btn" data-service="Haarstyling">Haarstyling</button>
+          <button type="button" class="service-btn" data-service="Haare färben">Haare färben</button>
         </div>
-        <button type="button" class="btn primary next-btn" data-next="2">Continue</button>
+        <button type="button" class="btn primary next-btn" data-next="2">Weiter</button>
       </div>
 
       <div class="panel" id="panel-2">
-        <h2>Pick a date</h2>
+        <h2>Datum auswählen</h2>
         <input type="date" id="date-input" class="date-input" />
         <p class="hint" id="date-hint"></p>
         <div class="nav-row">
-          <button type="button" class="btn ghost back-btn" data-back="1">Back</button>
-          <button type="button" class="btn primary next-btn" data-next="3" disabled id="date-next">Continue</button>
+          <button type="button" class="btn ghost back-btn" data-back="1">Zurück</button>
+          <button type="button" class="btn primary next-btn" data-next="3" disabled id="date-next">Weiter</button>
         </div>
       </div>
 
       <div class="panel" id="panel-3">
-        <h2>Pick a time</h2>
+        <h2>Uhrzeit auswählen</h2>
         <p class="selected-date" id="selected-date-label"></p>
         <div class="slots" id="slots-grid">
-          <p class="empty">Select a date to see available times.</p>
+          <p class="empty">Wähle ein Datum, um verfügbare Zeiten zu sehen.</p>
         </div>
         <div class="nav-row">
-          <button type="button" class="btn ghost back-btn" data-back="2">Back</button>
-          <button type="button" class="btn primary next-btn" data-next="4" disabled id="time-next">Continue</button>
+          <button type="button" class="btn ghost back-btn" data-back="2">Zurück</button>
+          <button type="button" class="btn primary next-btn" data-next="4" disabled id="time-next">Weiter</button>
         </div>
       </div>
 
       <div class="panel" id="panel-4">
-        <h2>Your details</h2>
+        <h2>Deine Angaben</h2>
         <div class="summary" id="booking-summary"></div>
         <form id="details-form" class="form">
           <label>
-            Full name
-            <input type="text" name="name" required autocomplete="name" placeholder="Jane Doe" />
+            Vollständiger Name
+            <input type="text" name="name" required autocomplete="name" placeholder="Max Mustermann" />
           </label>
           <label>
-            Email
+            E-Mail
             <input type="email" name="email" required autocomplete="email" placeholder="jane@example.com" />
           </label>
           <label>
-            Notes <span class="optional">(optional)</span>
-            <textarea name="notes" rows="3" placeholder="Anything we should know?"></textarea>
+            Notizen <span class="optional">(optional)</span>
+            <textarea name="notes" rows="3" placeholder="Gibt es etwas, das wir wissen sollten?"></textarea>
           </label>
         </form>
         <div class="nav-row">
-          <button type="button" class="btn ghost back-btn" data-back="3">Back</button>
-          <button type="submit" form="details-form" class="btn primary" id="submit-btn">Confirm booking</button>
+          <button type="button" class="btn ghost back-btn" data-back="3">Zurück</button>
+          <button type="submit" form="details-form" class="btn primary" id="submit-btn">Buchung bestätigen</button>
         </div>
       </div>
 
       <div class="panel" id="panel-success">
         <div class="success-icon">✓</div>
-        <h2>You're booked!</h2>
+        <h2>Dein Termin ist gebucht!</h2>
         <p id="success-message"></p>
-        <button type="button" class="btn primary" id="book-another">Book another</button>
+        <button type="button" class="btn primary" id="book-another">Weiteren Termin buchen</button>
       </div>
     </section>
 
-    <p class="management-link"><a href="./admin.html">Management login</a></p>
+    <p class="management-link"><a href="./admin.html">Management-Login</a></p>
   </main>
 
   <script src="./script.js"></script>

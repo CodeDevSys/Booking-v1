@@ -27,7 +27,7 @@ function checkAdminKey(req) {
   const providedUser = req.query?.user || req.headers?.["x-admin-user"];
   const provided = req.query?.key || req.headers?.["x-admin-key"];
   if (providedUser !== expectedUser || provided !== expected) {
-    return { ok: false, message: "Wrong username or password.", status: 401 };
+    return { ok: false, message: "Falscher Benutzername oder falsches Passwort.", status: 401 };
   }
   return { ok: true };
 }
@@ -47,7 +47,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ bookings });
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ error: err.message || "Server error" });
+      return res.status(500).json({ error: err.message || "Serverfehler" });
     }
   }
 
@@ -61,25 +61,25 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ deleted });
     } catch (err) {
       console.error(err);
-      return res.status(err.status || 500).json({ error: err.message || "Server error" });
+      return res.status(err.status || 500).json({ error: err.message || "Serverfehler" });
     }
   }
 
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({ error: "Methode nicht erlaubt" });
   }
 
   try {
     await ensureReady();
     const body = getBody(req);
-    if (!body) return res.status(400).json({ error: "Invalid JSON body" });
+    if (!body) return res.status(400).json({ error: "Ungültiger JSON-Body" });
 
     const { date, start, name, email, notes, service } = body;
     if (!date || !start || !name || !email) {
-      return res.status(400).json({ error: "date, start, name, and email are required" });
+      return res.status(400).json({ error: "Datum, Startzeit, Name und E-Mail sind erforderlich" });
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ error: "invalid email" });
+      return res.status(400).json({ error: "Ungültige E-Mail-Adresse" });
     }
 
     const booking = await calendar.createBooking({
@@ -93,6 +93,6 @@ module.exports = async function handler(req, res) {
     return res.status(201).json({ booking });
   } catch (err) {
     console.error(err);
-    return res.status(err.status || 500).json({ error: err.message || "Server error" });
+    return res.status(err.status || 500).json({ error: err.message || "Serverfehler" });
   }
 };

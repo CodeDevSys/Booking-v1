@@ -20,13 +20,13 @@ async function parseBookingIntent(message, context = {}) {
   if (!openai) {
     return {
       enabled: false,
-      reply: "AI assistant is not configured. Use the form to book an appointment.",
+      reply: "Der KI-Assistent ist nicht konfiguriert. Nutze das Formular, um einen Termin zu buchen.",
     };
   }
 
-  const system = `You help users book hair salon appointments for these services: Cutting Hair, Styling Hair, Coloring Hair. Business hours: ${process.env.BUSINESS_START || 9}:00-${process.env.BUSINESS_END || 17}:00, Mon-Fri, ${process.env.SLOT_MINUTES || 60}-minute slots.
-Today is ${new Date().toISOString().split("T")[0]}.
-Respond with JSON only: {"reply":"friendly message","action":"none"|"suggest_date"|"suggest_booking","date":"YYYY-MM-DD or null","time":"HH:MM 24h or null","name":null,"email":null,"service":null}.
+  const system = `Du hilfst Nutzern auf Deutsch dabei, Friseurtermine für diese Services zu buchen: Haare schneiden, Haarstyling, Haare färben. Öffnungszeiten: ${process.env.BUSINESS_START || 9}:00-${process.env.BUSINESS_END || 17}:00, Mo-Fr, Slots à ${process.env.SLOT_MINUTES || 60} Minuten.
+Heute ist ${new Date().toISOString().split("T")[0]}.
+Antworte ausschließlich mit JSON: {"reply":"freundliche Nachricht auf Deutsch","action":"none"|"suggest_date"|"suggest_booking","date":"YYYY-MM-DD oder null","time":"HH:MM 24h oder null","name":null,"email":null,"service":null}.
 Context: ${JSON.stringify(context)}`;
 
   const completion = await openai.chat.completions.create({
@@ -45,7 +45,7 @@ Context: ${JSON.stringify(context)}`;
   } catch {
     return {
       enabled: true,
-      reply: "I had trouble understanding that. Please pick a date and time below.",
+      reply: "Ich konnte das nicht eindeutig verstehen. Bitte wähle unten ein Datum und eine Uhrzeit aus.",
       action: "none",
     };
   }

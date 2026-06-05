@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const CREDENTIALS_PATH = path.join(__dirname, "..", "credentials.json");
-const DEFAULT_SERVICE = "Cutting Hair";
+const DEFAULT_SERVICE = "Haare schneiden";
 const SLOT_MINUTES = Number(process.env.SLOT_MINUTES) || 60;
 const BUSINESS_START = Number(process.env.BUSINESS_START) || 9;
 const BUSINESS_END = Number(process.env.BUSINESS_END) || 17;
@@ -199,7 +199,7 @@ async function createBooking({ date, start, name, email, notes, service }) {
       calendarId,
       requestBody: {
         summary: `${booking.service} — ${name}`,
-        description: `Email: ${email}\n${notes ? `Notes: ${notes}` : ""}`,
+        description: `E-Mail: ${email}\n${notes ? `Notizen: ${notes}` : ""}`,
         start: { dateTime: start },
         end: { dateTime: booking.end },
       },
@@ -209,7 +209,7 @@ async function createBooking({ date, start, name, email, notes, service }) {
       (b) => b.date === date && isSlotBooked(start, [{ start: b.start, end: b.end }])
     );
     if (conflict) {
-      const err = new Error("This time slot is no longer available");
+      const err = new Error("Dieser Termin ist nicht mehr verfügbar");
       err.status = 409;
       throw err;
     }
@@ -222,7 +222,7 @@ async function createBooking({ date, start, name, email, notes, service }) {
 
 async function deleteBooking(id) {
   if (!id) {
-    const err = new Error("booking id required");
+    const err = new Error("Buchungs-ID erforderlich");
     err.status = 400;
     throw err;
   }
@@ -237,7 +237,7 @@ async function deleteBooking(id) {
 
   const index = bookings.findIndex((booking) => booking.id === id);
   if (index === -1) {
-    const err = new Error("Booking not found");
+    const err = new Error("Buchung nicht gefunden");
     err.status = 404;
     throw err;
   }
@@ -259,8 +259,8 @@ async function listBookings() {
     });
     return (res.data.items || []).map((e) => {
       const desc = e.description || "";
-      const emailMatch = desc.match(/Email:\s*(\S+)/);
-      const notesMatch = desc.match(/Notes:\s*(.+)/);
+      const emailMatch = desc.match(/(?:Email|E-Mail):\s*(\S+)/);
+      const notesMatch = desc.match(/(?:Notes|Notizen):\s*(.+)/);
       const summary = e.summary || "";
       const parts = summary.split("—");
       return {

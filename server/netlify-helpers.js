@@ -51,7 +51,7 @@ function checkAdminKey(event) {
     event.headers?.["x-admin-key"] ||
     event.headers?.["X-Admin-Key"];
   if (providedUser !== expectedUser || provided !== expected) {
-    return { ok: false, message: "Wrong username or password.", status: 401 };
+    return { ok: false, message: "Falscher Benutzername oder falsches Passwort.", status: 401 };
   }
   return { ok: true };
 }
