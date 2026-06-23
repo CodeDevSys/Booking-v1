@@ -344,6 +344,39 @@
     });
   }
 
+  function formatDateTime(start) {
+    if (!start) return "—";
+    return `${formatBookingDate(start)}, ${formatBookingTime(start)}`;
+  }
+
+  function statusLabel(status) {
+    const labels = {
+      active: "Aktiv",
+      pending: "Angeboten",
+      open: "Offen",
+      booked: "Gebucht",
+      expired: "Abgelaufen",
+      unavailable: "Vergeben",
+      superseded: "Überholt",
+    };
+    return labels[status] || status || "—";
+  }
+
+  function statusPill(status) {
+    const safe = escapeHtml(status || "");
+    return `<span class="status-pill ${safe}">${escapeHtml(statusLabel(status))}</span>`;
+  }
+
+  function waitlistAvailability(entry) {
+    const parts = [];
+    if (entry.preferredDate) parts.push(formatDateLabel(entry.preferredDate));
+    if (entry.earliestTime || entry.latestTime) {
+      parts.push(`${entry.earliestTime || "00:00"}–${entry.latestTime || "23:59"}`);
+    }
+    if (entry.staffPreference) parts.push(`Mitarbeiter: ${entry.staffPreference}`);
+    return parts.length ? parts.join(" · ") : "Flexibel";
+  }
+
   function getLocalBookings() {
     try {
       const local = JSON.parse(localStorage.getItem("bookings") || "[]");
@@ -400,9 +433,84 @@
       )
       .join("");
 
-    container.innerHTML = `<table class="bookings-table">
+    container.innerHTML = `<div class="table-wrap"><table class="bookings-table">
         <thead><tr><th>Datum</th><th>Uhrzeit</th><th>Service</th><th>Kunde</th><th>E-Mail</th><th>Notizen</th><th>Aktion</th></tr></thead>
-        <tbody>${rows}</tbody></table>`;
+        <tbody>${rows}</tbody></table></div>`;
+  }
+
+  function renderWaitlist(data) {
+    const container = $("#waitlist-container");
+    if (!container) return;
+
+    const entries = Array.isArray(data.entries) ? data.entries : [];
+    const offers = Array.isArray(data.offers) ? data.offers : [];
+    const messages = Array.isArray(data.messages) ? data.messages : [];
+
+    const entriesHtml = entries.length
+      ? `<div class="table-wrap"><table class="bookings-table">
+          <thead><tr><th>Status</th><th>Kunde</th><th>Service</th><th>Dauer</th><th>Verfügbarkeit</th><th>Priorität</th></tr></thead>
+          <tbody>${entries
+            .map(
+              (entry) => `<tr>
+                <td>${statusPill(entry.status)}</td>
+                <td>${escapeHtml(entry.name || "—")}<br><span class="hint">${escapeHtml(entry.phone || "—")}</span></td>
+                <td>${escapeHtml(entry.service || "—")}</td>
+                <td>${escapeHtml(entry.durationMinutes || "—")} Min.</td>
+                <td>${escapeHtml(waitlistAvailability(entry))}</td>
+                <td>${escapeHtml(entry.ranking || 0)}</td>
+              </tr>`
+            )
+            .join("")}</tbody>
+        </table></div>`
+      : '<p class="empty">Noch keine Kunden auf der Warteliste.</p>';
+
+    const offersHtml = offers.length
+      ? `<div class="table-wrap"><table class="bookings-table">
+          <thead><tr><th>Status</th><th>Termin</th><th>Strategie</th><th>Ablauf</th></tr></thead>
+          <tbody>${offers
+            .slice(0, 10)
+            .map(
+              (offer) => `<tr>
+                <td>${statusPill(offer.status)}</td>
+                <td>${escapeHtml(formatDateTime(offer.slot?.start))}</td>
+                <td>${escapeHtml(offer.strategy === "cascade" ? "Kaskade" : "First-Come")}</td>
+                <td>${escapeHtml(formatDateTime(offer.expiresAt))}</td>
+              </tr>`
+            )
+            .join("")}</tbody>
+        </table></div>`
+      : '<p class="empty">Noch keine automatischen Angebote erzeugt.</p>';
+
+    const messagesHtml = messages.length
+      ? `<div class="table-wrap"><table class="bookings-table">
+          <thead><tr><th>Status</th><th>An</th><th>Nachricht</th></tr></thead>
+          <tbody>${messages
+            .slice(0, 10)
+            .map(
+              (message) => `<tr>
+                <td>${statusPill(message.status)}</td>
+                <td>${escapeHtml(message.to || "—")}</td>
+                <td>${escapeHtml(message.message || "—")}</td>
+              </tr>`
+            )
+            .join("")}</tbody>
+        </table></div>`
+      : '<p class="empty">Noch keine SMS-Outbox-Einträge.</p>';
+
+    container.innerHTML = `
+      <div class="waitlist-section">
+        <h3>Aktive Warteliste (${entries.length})</h3>
+        ${entriesHtml}
+      </div>
+      <div class="waitlist-section">
+        <h3>Automatische Angebote</h3>
+        ${offersHtml}
+      </div>
+      <div class="waitlist-section">
+        <h3>SMS-Outbox</h3>
+        ${messagesHtml}
+      </div>
+    `;
   }
 
   function setAdminStatus(message, type) {
@@ -450,6 +558,70 @@
     }
   }
 
+  async function loadWaitlist() {
+    const user = sessionStorage.getItem(ADMIN_USER_STORAGE) || "";
+    const key = sessionStorage.getItem(ADMIN_STORAGE) || "";
+    const container = $("#waitlist-container");
+    if (!container) return false;
+    container.innerHTML = '<p class="loading">Warteliste wird geladen…</p>';
+
+    try {
+      const params = new URLSearchParams({ user, key });
+      const { res, data } = await apiFetch(`/api/waitlist?${params.toString()}`);
+      if (res.status === 401 || res.status === 503) {
+        sessionStorage.removeItem(ADMIN_USER_STORAGE);
+        sessionStorage.removeItem(ADMIN_STORAGE);
+        showAdminLogin();
+        setAdminStatus(data.error || "Falscher Benutzername oder falsches Passwort.", "error");
+        return false;
+      }
+      if (!res.ok) throw new Error(data.error || "Warteliste konnte nicht geladen werden");
+      renderWaitlist(data);
+      return true;
+    } catch (err) {
+      container.innerHTML = `<p class="empty">${escapeHtml(err.message)}</p>`;
+      return false;
+    }
+  }
+
+  async function handleWaitlistSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const btn = $("#waitlist-submit-btn");
+    const fd = new FormData(form);
+    const payload = Object.fromEntries(fd.entries());
+    const user = sessionStorage.getItem(ADMIN_USER_STORAGE) || "";
+    const key = sessionStorage.getItem(ADMIN_STORAGE) || "";
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Wird hinzugefügt…";
+    }
+
+    try {
+      const params = new URLSearchParams({ user, key });
+      const { res, data } = await apiFetch(`/api/waitlist?${params.toString()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(data.error || "Wartelisteneintrag fehlgeschlagen");
+      form.reset();
+      form.querySelector('[name="durationMinutes"]').value = "60";
+      form.querySelector('[name="earliestTime"]').value = "09:00";
+      form.querySelector('[name="latestTime"]').value = "17:00";
+      form.querySelector('[name="ranking"]').value = "0";
+      await loadWaitlist();
+    } catch (err) {
+      showError(err.message || "Wartelisteneintrag fehlgeschlagen");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Zur Warteliste hinzufügen";
+      }
+    }
+  }
+
   function deleteLocalBooking(id) {
     const bookings = getLocalBookings().filter((booking) => String(booking.id) !== String(id));
     localStorage.setItem("bookings", JSON.stringify(bookings));
@@ -469,6 +641,7 @@
     btn.textContent = "Wird gelöscht…";
 
     try {
+      let waitlistMessage = "";
       if (source === "browser") {
         deleteLocalBooking(id);
       } else {
@@ -479,8 +652,14 @@
           method: "DELETE",
         });
         if (!res.ok) throw new Error(data.error || "Löschen fehlgeschlagen");
+        const offerCount = data.waitlist?.offers?.length || 0;
+        if (offerCount) {
+          waitlistMessage = `${offerCount} Wartelisten-Angebot${offerCount === 1 ? "" : "e"} per SMS vorbereitet.`;
+        }
       }
       await loadAdminBookings();
+      await loadWaitlist();
+      if (waitlistMessage) setAdminStatus(waitlistMessage, "ok");
     } catch (err) {
       showError(err.message || "Löschen fehlgeschlagen");
       btn.disabled = false;
@@ -491,15 +670,19 @@
   function showAdminLogin() {
     const login = $("#login-card");
     const list = $("#list-card");
+    const waitlist = $("#waitlist-card");
     if (login) login.hidden = false;
     if (list) list.hidden = true;
+    if (waitlist) waitlist.hidden = true;
   }
 
   function showAdminList() {
     const login = $("#login-card");
     const list = $("#list-card");
+    const waitlist = $("#waitlist-card");
     if (login) login.hidden = true;
     if (list) list.hidden = false;
+    if (waitlist) waitlist.hidden = false;
     list?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -527,6 +710,7 @@
     showAdminList();
 
     const ok = await loadAdminBookings();
+    await loadWaitlist();
 
     if (btn) {
       btn.disabled = false;
@@ -544,6 +728,7 @@
       if (sessionStorage.getItem(ADMIN_USER_STORAGE) && sessionStorage.getItem(ADMIN_STORAGE)) {
         showAdminList();
         loadAdminBookings();
+        loadWaitlist();
       } else {
         showAdminLogin();
       }
@@ -558,7 +743,12 @@
 
     $("#admin-login-btn")?.addEventListener("click", handleAdminLogin);
 
-    $("#refresh-btn")?.addEventListener("click", loadAdminBookings);
+    $("#refresh-btn")?.addEventListener("click", async () => {
+      await loadAdminBookings();
+      await loadWaitlist();
+    });
+    $("#refresh-waitlist-btn")?.addEventListener("click", loadWaitlist);
+    $("#waitlist-form")?.addEventListener("submit", handleWaitlistSubmit);
     $("#bookings-container")?.addEventListener("click", handleDeleteBooking);
     $("#logout-btn")?.addEventListener("click", () => {
       sessionStorage.removeItem(ADMIN_USER_STORAGE);
@@ -572,14 +762,102 @@
     if (sessionStorage.getItem(ADMIN_USER_STORAGE) && sessionStorage.getItem(ADMIN_STORAGE)) {
       showAdminList();
       loadAdminBookings();
+      loadWaitlist();
     } else {
       showAdminLogin();
+    }
+  }
+
+  function getWaitlistToken() {
+    return new URLSearchParams(window.location.search).get("token") || "";
+  }
+
+  function renderOfferLoading(message) {
+    const container = $("#waitlist-offer-container");
+    if (container) container.innerHTML = `<p class="loading">${escapeHtml(message)}</p>`;
+  }
+
+  function renderOfferError(message) {
+    const container = $("#waitlist-offer-container");
+    if (!container) return;
+    container.innerHTML = `
+      <h2>Termin nicht verfügbar</h2>
+      <p class="claim-note">${escapeHtml(message)}</p>
+      <p class="claim-note"><a href="./index.html" class="muted-link">Zur regulären Buchung</a></p>
+    `;
+  }
+
+  function renderOffer(offer) {
+    const container = $("#waitlist-offer-container");
+    if (!container) return;
+    if (offer.status !== "pending") {
+      renderOfferError("Dieses Wartelisten-Angebot wurde bereits verwendet oder ist abgelaufen.");
+      return;
+    }
+
+    container.innerHTML = `
+      <h2>Hallo ${escapeHtml(offer.customerName || "")}, dein Wunschslot ist frei.</h2>
+      <div class="claim-summary">
+        <p><strong>${escapeHtml(offer.service || "Salontermin")}</strong></p>
+        <p>${escapeHtml(formatDateTime(offer.slot?.start))}</p>
+        <p>${escapeHtml(offer.durationMinutes || "")} Minuten</p>
+      </div>
+      <p class="claim-note">Der Link ist bis ${escapeHtml(formatDateTime(offer.expiresAt))} gültig. Sobald jemand bestätigt, ist der Slot vergeben.</p>
+      <button type="button" class="btn primary" id="claim-offer-btn">Termin verbindlich buchen</button>
+    `;
+
+    $("#claim-offer-btn")?.addEventListener("click", claimWaitlistOffer);
+  }
+
+  async function loadWaitlistOffer() {
+    const token = getWaitlistToken();
+    if (!token) {
+      renderOfferError("Der SMS-Link enthält kein gültiges Angebot.");
+      return;
+    }
+
+    try {
+      const params = new URLSearchParams({ token });
+      const { res, data } = await apiFetch(`/api/waitlist-offer?${params.toString()}`);
+      if (!res.ok) throw new Error(data.error || "Angebot konnte nicht geladen werden");
+      renderOffer(data.offer);
+    } catch (err) {
+      renderOfferError(err.message || "Angebot konnte nicht geladen werden");
+    }
+  }
+
+  async function claimWaitlistOffer() {
+    const token = getWaitlistToken();
+    const btn = $("#claim-offer-btn");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Wird gebucht…";
+    }
+
+    try {
+      const { res, data } = await apiFetch("/api/waitlist-offer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      if (!res.ok) throw new Error(data.error || "Buchung fehlgeschlagen");
+      const container = $("#waitlist-offer-container");
+      if (container) {
+        container.innerHTML = `
+          <div class="success-icon">✓</div>
+          <h2>Dein Termin ist gebucht!</h2>
+          <p class="claim-note">${escapeHtml(formatDateTime(data.booking?.start))} ist jetzt verbindlich für dich reserviert.</p>
+        `;
+      }
+    } catch (err) {
+      renderOfferError(err.message || "Buchung fehlgeschlagen");
     }
   }
 
   function init() {
     const hasBooking = !!$("#booking-card");
     const hasManager = !!$("#manager-app");
+    const hasWaitlistClaim = !!$("#waitlist-claim-app");
 
     if (hasBooking) {
       initDateInput();
@@ -594,8 +872,9 @@
     }
 
     if (hasManager) initManager();
+    if (hasWaitlistClaim) loadWaitlistOffer();
 
-    if (!hasBooking && !hasManager) return;
+    if (!hasBooking && !hasManager && !hasWaitlistClaim) return;
 
     window.__bookingAppReady = true;
     const warn = $("#js-warning");

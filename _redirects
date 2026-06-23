@@ -1,6 +1,8 @@
 /api/health     /.netlify/functions/health     200!
 /api/slots      /.netlify/functions/slots      200!
 /api/bookings   /.netlify/functions/bookings   200!
+/api/waitlist   /.netlify/functions/waitlist   200!
+/api/waitlist-offer /.netlify/functions/waitlist-offer 200!
 /api/chat       /.netlify/functions/chat       200!
 /admin          /admin.html                   200!
 /admin/         /admin.html                   200!

@@ -308,7 +308,8 @@ body {
 }
 
 .form input,
-.form textarea {
+.form textarea,
+.form select {
   padding: 0.7rem 0.9rem;
   font: inherit;
   color: var(--text);
@@ -319,9 +320,21 @@ body {
 }
 
 .form input:focus,
-.form textarea:focus {
+.form textarea:focus,
+.form select:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.compact-form {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1.25rem;
 }
 
 .nav-row {
@@ -446,6 +459,71 @@ body {
   font-weight: 500;
   font-size: 0.75rem;
   text-transform: uppercase;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.waitlist-section {
+  margin-top: 1.25rem;
+}
+
+.waitlist-section h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-pill.active,
+.status-pill.pending,
+.status-pill.open {
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.status-pill.booked {
+  color: #0f0f12;
+  background: var(--accent);
+}
+
+.status-pill.expired,
+.status-pill.unavailable,
+.status-pill.superseded {
+  color: var(--danger);
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.claim-card {
+  max-width: 560px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.claim-summary {
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.claim-summary strong {
+  color: var(--accent);
+}
+
+.claim-note {
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .error-toast {

@@ -4,6 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const calendar = require("./calendar");
+const waitlist = require("./waitlist");
 const openai = require("./openai");
 
 const ROOT = path.join(__dirname, "..");
@@ -49,6 +50,21 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
+function checkAdmin(req, res) {
+  const expectedUser = process.env.ADMIN_USER || DEFAULT_ADMIN_USER;
+  const expected = process.env.ADMIN_KEY || DEFAULT_ADMIN_KEY;
+  if (req.query.user !== expectedUser || req.query.key !== expected) {
+    res.status(401).json({ error: "Falscher Benutzername oder falsches Passwort." });
+    return false;
+  }
+  return true;
+}
+
+function requestBaseUrl(req) {
+  if (process.env.WAITLIST_PUBLIC_BASE_URL) return process.env.WAITLIST_PUBLIC_BASE_URL;
+  return `${req.protocol}://${req.get("host")}`;
+}
+
 app.get("/api/slots", async (req, res, next) => {
   try {
     const { date, tzOffset } = req.query;
@@ -64,11 +80,7 @@ app.get("/api/slots", async (req, res, next) => {
 
 app.get("/api/bookings", async (req, res, next) => {
   try {
-    const expectedUser = process.env.ADMIN_USER || DEFAULT_ADMIN_USER;
-    const expected = process.env.ADMIN_KEY || DEFAULT_ADMIN_KEY;
-    if (req.query.user !== expectedUser || req.query.key !== expected) {
-      return res.status(401).json({ error: "Falscher Benutzername oder falsches Passwort." });
-    }
+    if (!checkAdmin(req, res)) return;
     const bookings = await calendar.listBookings();
     res.json({ bookings });
   } catch (err) {
@@ -78,13 +90,14 @@ app.get("/api/bookings", async (req, res, next) => {
 
 app.delete("/api/bookings", async (req, res, next) => {
   try {
-    const expectedUser = process.env.ADMIN_USER || DEFAULT_ADMIN_USER;
-    const expected = process.env.ADMIN_KEY || DEFAULT_ADMIN_KEY;
-    if (req.query.user !== expectedUser || req.query.key !== expected) {
-      return res.status(401).json({ error: "Falscher Benutzername oder falsches Passwort." });
-    }
+    if (!checkAdmin(req, res)) return;
+    const bookings = await calendar.listBookings();
+    const cancelled = bookings.find((booking) => booking.id === req.query.id);
     const deleted = await calendar.deleteBooking(req.query.id);
-    res.json({ deleted });
+    const waitlistResult = await waitlist.createOffersForCancellation(cancelled || deleted, {
+      baseUrl: requestBaseUrl(req),
+    });
+    res.json({ deleted, waitlist: waitlistResult });
   } catch (err) {
     next(err);
   }
@@ -108,6 +121,48 @@ app.post("/api/bookings", async (req, res, next) => {
       service,
     });
     res.status(201).json({ booking });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get("/api/waitlist", async (req, res, next) => {
+  try {
+    if (!checkAdmin(req, res)) return;
+    const data = await waitlist.listWaitlist({ baseUrl: requestBaseUrl(req) });
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post("/api/waitlist", async (req, res, next) => {
+  try {
+    if (!checkAdmin(req, res)) return;
+    const entry = waitlist.createWaitlistEntry(req.body);
+    res.status(201).json({ entry });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get("/api/waitlist-offer", async (req, res, next) => {
+  try {
+    const { token } = req.query;
+    if (!token) return res.status(400).json({ error: "Angebots-Token erforderlich" });
+    const offer = await waitlist.getOfferByToken(token, { baseUrl: requestBaseUrl(req) });
+    res.json({ offer });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post("/api/waitlist-offer", async (req, res, next) => {
+  try {
+    const token = req.body?.token || req.query.token;
+    if (!token) return res.status(400).json({ error: "Angebots-Token erforderlich" });
+    const result = await waitlist.claimOffer(token);
+    res.status(201).json(result);
   } catch (err) {
     next(err);
   }

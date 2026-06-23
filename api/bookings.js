@@ -1,4 +1,5 @@
 const calendar = require("../server/calendar");
+const waitlist = require("../server/waitlist");
 
 const DEFAULT_ADMIN_USER = "admin";
 const DEFAULT_ADMIN_KEY = "123456";
@@ -32,6 +33,13 @@ function checkAdminKey(req) {
   return { ok: true };
 }
 
+function requestBaseUrl(req) {
+  if (process.env.WAITLIST_PUBLIC_BASE_URL) return process.env.WAITLIST_PUBLIC_BASE_URL;
+  const host = req.headers?.host;
+  const protocol = req.headers?.["x-forwarded-proto"] || "https";
+  return host ? `${protocol}://${host}` : "";
+}
+
 module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") {
     return res.status(204).end();
@@ -57,8 +65,13 @@ module.exports = async function handler(req, res) {
 
     try {
       await ensureReady();
+      const bookings = await calendar.listBookings();
+      const cancelled = bookings.find((booking) => booking.id === req.query?.id);
       const deleted = await calendar.deleteBooking(req.query?.id);
-      return res.status(200).json({ deleted });
+      const waitlistResult = await waitlist.createOffersForCancellation(cancelled || deleted, {
+        baseUrl: requestBaseUrl(req),
+      });
+      return res.status(200).json({ deleted, waitlist: waitlistResult });
     } catch (err) {
       console.error(err);
       return res.status(err.status || 500).json({ error: err.message || "Serverfehler" });

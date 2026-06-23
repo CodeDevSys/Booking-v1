@@ -6,6 +6,7 @@ const DEFAULT_SERVICE = "Haare schneiden";
 const SLOT_MINUTES = Number(process.env.SLOT_MINUTES) || 60;
 const BUSINESS_START = Number(process.env.BUSINESS_START) || 9;
 const BUSINESS_END = Number(process.env.BUSINESS_END) || 17;
+const BUSINESS_TIMEZONE = process.env.BUSINESS_TIMEZONE || "Europe/Berlin";
 const BOOKINGS_DIR = process.env.BOOKINGS_DATA_DIR || path.join(__dirname, "..", "data");
 const BOOKINGS_FILE = path.join(BOOKINGS_DIR, "bookings.json");
 
@@ -36,6 +37,22 @@ function saveStoredBookings() {
 
 function sortBookings(list) {
   return [...list].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+}
+
+function rangesOverlap(startA, endA, startB, endB) {
+  return new Date(startA).getTime() < new Date(endB).getTime() &&
+    new Date(endA).getTime() > new Date(startB).getTime();
+}
+
+function toBusinessDateKey(value) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: BUSINESS_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(value));
+  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${map.year}-${map.month}-${map.day}`;
 }
 
 function loadGoogleCredentials() {
@@ -135,9 +152,7 @@ function isSlotBooked(slotStart, bookedRanges) {
   const start = new Date(slotStart).getTime();
   const end = start + SLOT_MINUTES * 60000;
   return bookedRanges.some((b) => {
-    const bStart = new Date(b.start).getTime();
-    const bEnd = new Date(b.end).getTime();
-    return start < bEnd && end > bStart;
+    return rangesOverlap(start, end, b.start, b.end);
   });
 }
 
@@ -180,8 +195,14 @@ async function getAvailableSlots(dateStr, options = {}) {
   });
 }
 
-async function createBooking({ date, start, name, email, notes, service }) {
-  const slotEnd = new Date(new Date(start).getTime() + SLOT_MINUTES * 60000);
+async function isTimeRangeAvailable({ date, start, end }) {
+  const busy = await getBusyRanges(date, null);
+  return !busy.some((range) => rangesOverlap(start, end, range.start, range.end));
+}
+
+async function createBooking({ date, start, name, email, phone, notes, service, durationMinutes, staff, waitlistEntryId }) {
+  const minutes = Number(durationMinutes) || SLOT_MINUTES;
+  const slotEnd = new Date(new Date(start).getTime() + minutes * 60000);
   const booking = {
     id: crypto.randomUUID(),
     date,
@@ -189,8 +210,12 @@ async function createBooking({ date, start, name, email, notes, service }) {
     end: slotEnd.toISOString(),
     name,
     email,
+    phone: phone || "",
     notes: notes || "",
     service: service || DEFAULT_SERVICE,
+    durationMinutes: minutes,
+    staff: staff || "",
+    waitlistEntryId: waitlistEntryId || "",
     createdAt: new Date().toISOString(),
   };
 
@@ -199,15 +224,19 @@ async function createBooking({ date, start, name, email, notes, service }) {
       calendarId,
       requestBody: {
         summary: `${booking.service} — ${name}`,
-        description: `E-Mail: ${email}\n${notes ? `Notizen: ${notes}` : ""}`,
+        description: [
+          `E-Mail: ${email}`,
+          phone ? `Telefon: ${phone}` : "",
+          staff ? `Mitarbeiter: ${staff}` : "",
+          waitlistEntryId ? `Warteliste: ${waitlistEntryId}` : "",
+          notes ? `Notizen: ${notes}` : "",
+        ].filter(Boolean).join("\n"),
         start: { dateTime: start },
         end: { dateTime: booking.end },
       },
     });
   } else {
-    const conflict = bookings.some(
-      (b) => b.date === date && isSlotBooked(start, [{ start: b.start, end: b.end }])
-    );
+    const conflict = bookings.some((b) => b.date === date && rangesOverlap(start, booking.end, b.start, b.end));
     if (conflict) {
       const err = new Error("Dieser Termin ist nicht mehr verfügbar");
       err.status = 409;
@@ -260,17 +289,24 @@ async function listBookings() {
     return (res.data.items || []).map((e) => {
       const desc = e.description || "";
       const emailMatch = desc.match(/(?:Email|E-Mail):\s*(\S+)/);
+      const phoneMatch = desc.match(/(?:Telefon|Phone):\s*(.+)/);
+      const staffMatch = desc.match(/(?:Mitarbeiter|Staff):\s*(.+)/);
       const notesMatch = desc.match(/(?:Notes|Notizen):\s*(.+)/);
       const summary = e.summary || "";
       const parts = summary.split("—");
+      const start = e.start?.dateTime || e.start?.date;
+      const end = e.end?.dateTime || e.end?.date;
       return {
         id: e.id,
         service: parts[0]?.trim() || summary,
         name: parts[1]?.trim() || "",
         email: emailMatch ? emailMatch[1] : "",
+        phone: phoneMatch ? phoneMatch[1].trim() : "",
+        staff: staffMatch ? staffMatch[1].trim() : "",
         notes: notesMatch ? notesMatch[1].trim() : "",
-        start: e.start?.dateTime || e.start?.date,
-        end: e.end?.dateTime || e.end?.date,
+        date: start ? toBusinessDateKey(start) : "",
+        start,
+        end,
         source: "google",
       };
     });
@@ -281,6 +317,7 @@ async function listBookings() {
 module.exports = {
   initGoogleCalendar,
   getAvailableSlots,
+  isTimeRangeAvailable,
   createBooking,
   deleteBooking,
   getBookings: () => sortBookings(bookings),
