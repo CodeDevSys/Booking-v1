@@ -1406,6 +1406,13 @@
     story?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  function renderManagerCalendarImmediately() {
+    if (!getLocalBookings().length) seedLocalDemoData();
+    const bookings = getLocalBookings();
+    adminState.bookings = bookings;
+    renderAdminBookings(bookings);
+  }
+
   async function handleAdminLogin() {
     const user = $("#admin-user")?.value.trim();
     const key = $("#admin-key")?.value.trim();
@@ -1428,6 +1435,7 @@
     sessionStorage.setItem(ADMIN_USER_STORAGE, user);
     sessionStorage.setItem(ADMIN_STORAGE, key);
     showAdminList();
+    renderManagerCalendarImmediately();
 
     const ok = await loadAdminBookings();
     await loadWaitlist();
@@ -1448,6 +1456,7 @@
     if (managerReady) {
       if (sessionStorage.getItem(ADMIN_USER_STORAGE) && sessionStorage.getItem(ADMIN_STORAGE)) {
         showAdminList();
+        renderManagerCalendarImmediately();
         refreshAdminDemo().then(ensureDemoDataLoaded);
       } else {
         showAdminLogin();
@@ -1484,6 +1493,7 @@
 
     if (sessionStorage.getItem(ADMIN_USER_STORAGE) && sessionStorage.getItem(ADMIN_STORAGE)) {
       showAdminList();
+      renderManagerCalendarImmediately();
       refreshAdminDemo().then(ensureDemoDataLoaded);
     } else {
       showAdminLogin();
