@@ -6,6 +6,9 @@
   const SLOT_MINUTES = 60;
   const BUSINESS_START = 9;
   const BUSINESS_END = 17;
+  const DEMO_INITIAL_DELAY_MS = 10000;
+  const DEMO_POPUP_VISIBLE_MS = 8000;
+  const DEMO_STEP_PAUSE_MS = 1500;
 
   const state = {
     step: 1,
@@ -330,6 +333,10 @@
   let schedulerTimers = [];
   let demoAutoSeeded = false;
   let overlaySequenceRunning = false;
+
+  function demoStepStart(index) {
+    return DEMO_INITIAL_DELAY_MS + index * (DEMO_POPUP_VISIBLE_MS + DEMO_STEP_PAUSE_MS);
+  }
 
   function nextBusinessDateKey(daysAhead = 1) {
     const date = new Date();
@@ -779,28 +786,28 @@
 
     schedulerTimers.push(setTimeout(() => {
       showDemoOverlay("🧠", "Automatische Terminabsage erkannt", "14:00 Maria — Farbe — ABGESAGT");
-    }, 5000));
+    }, demoStepStart(0)));
 
     schedulerTimers.push(setTimeout(() => {
       hideDemoOverlay();
-    }, 8500));
+    }, demoStepStart(0) + DEMO_POPUP_VISIBLE_MS));
 
     schedulerTimers.push(setTimeout(() => {
       showDemoOverlay("🔍", "Passender Kunde wird gesucht", "Freier Slot: 14:00 — Farbe");
       setLocalSchedulerPhase("matched");
-    }, 10000));
+    }, demoStepStart(1)));
 
     schedulerTimers.push(setTimeout(() => {
       hideDemoOverlay();
-    }, 13500));
+    }, demoStepStart(1) + DEMO_POPUP_VISIBLE_MS));
 
     schedulerTimers.push(setTimeout(() => {
       showDemoOverlay("👤", "Passender Kunde gefunden", "Sophie\n\n✓ Farbe\n✓ verfügbar\n✓ passt zum Zeitpunkt");
-    }, 15000));
+    }, demoStepStart(2)));
 
     schedulerTimers.push(setTimeout(() => {
       hideDemoOverlay();
-    }, 18500));
+    }, demoStepStart(2) + DEMO_POPUP_VISIBLE_MS));
 
     schedulerTimers.push(setTimeout(() => {
       createLocalOffersForCancellation(cancelled);
@@ -809,11 +816,11 @@
       renderWaitlist(nextWaitlist);
       renderAdminBookings(getLocalBookings());
       showDemoOverlay("📤", "Benachrichtigung wurde gesendet", "Die Kunden-Nachricht wurde vorbereitet und zugestellt.");
-    }, 20000));
+    }, demoStepStart(3)));
 
     schedulerTimers.push(setTimeout(() => {
       hideDemoOverlay();
-    }, 23500));
+    }, demoStepStart(3) + DEMO_POPUP_VISIBLE_MS));
 
     schedulerTimers.push(setTimeout(() => {
       const latestWaitlist = getLocalWaitlist();
@@ -821,7 +828,7 @@
         offer.entryId === "demo-entry-sophie" && offer.status === "pending"
       );
       if (sophieOffer) showTakeoverOverlay(sophieOffer.token);
-    }, 25000));
+    }, demoStepStart(4)));
   }
 
   function demoBookingForSlot(bookings, slotKey) {
