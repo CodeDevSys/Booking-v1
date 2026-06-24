@@ -173,7 +173,7 @@ async function getBusyRanges(dateStr, timezoneOffset) {
   }
 
   return bookings
-    .filter((b) => b.date === dateStr)
+    .filter((b) => b.date === dateStr && b.status !== "cancelled")
     .map((b) => ({ start: b.start, end: b.end }));
 }
 
@@ -236,7 +236,27 @@ async function createBooking({ date, start, name, email, phone, notes, service, 
       },
     });
   } else {
-    const conflict = bookings.some((b) => b.date === date && rangesOverlap(start, booking.end, b.start, b.end));
+    const cancelledIndex = bookings.findIndex((b) =>
+      b.status === "cancelled" &&
+      b.date === date &&
+      rangesOverlap(start, booking.end, b.start, b.end)
+    );
+    if (cancelledIndex !== -1 && waitlistEntryId) {
+      bookings[cancelledIndex] = {
+        ...bookings[cancelledIndex],
+        ...booking,
+        id: bookings[cancelledIndex].id,
+        status: "confirmed",
+      };
+      saveStoredBookings();
+      return bookings[cancelledIndex];
+    }
+
+    const conflict = bookings.some((b) =>
+      b.status !== "cancelled" &&
+      b.date === date &&
+      rangesOverlap(start, booking.end, b.start, b.end)
+    );
     if (conflict) {
       const err = new Error("Dieser Termin ist nicht mehr verfügbar");
       err.status = 409;
