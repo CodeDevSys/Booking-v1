@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - cursor/automated-waitlist-6c53
   workflow_dispatch:
 
 permissions:
