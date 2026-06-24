@@ -419,9 +419,11 @@
     return id.startsWith("demo-") || id.startsWith("local-rescue-") || booking?.waitlistEntryId;
   }
 
-  function seedLocalDemoData() {
+  function seedLocalDemoData({ preserveCustomerBookings = true } = {}) {
     const date = nextBusinessDateKey(1);
-    const existingCustomerBookings = getLocalBookings().filter((booking) => !isDemoBooking(booking));
+    const existingCustomerBookings = preserveCustomerBookings
+      ? getLocalBookings().filter((booking) => !isDemoBooking(booking))
+      : [];
     const demoBookings = [
       localDemoBooking({ id: "demo-booking-0900", date, hour: 9, name: "Anna", email: "anna.termin@example.com", service: "Haarschnitt", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
       localDemoBooking({ id: "demo-booking-1100", date, hour: 11, name: "Lisa", email: "lisa@example.com", service: "Farbe", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
@@ -1213,7 +1215,7 @@
     if (confirmFirst && !window.confirm("Demo zurücksetzen und Beispieldaten neu laden?")) return false;
 
     clearSchedulerTimers();
-    seedLocalDemoData();
+    seedLocalDemoData({ preserveCustomerBookings: !confirmFirst });
     await refreshAdminDemo();
     startLocalSchedulerDemoIfNeeded();
     return true;
