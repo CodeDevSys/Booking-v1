@@ -325,6 +325,7 @@
     bookings: [],
     waitlist: { entries: [], offers: [], notifications: [] },
   };
+  let schedulerTimers = [];
 
   function nextBusinessDateKey(daysAhead = 1) {
     const date = new Date();
@@ -350,6 +351,7 @@
         offers: Array.isArray(data.offers) ? data.offers : [],
         campaigns: Array.isArray(data.campaigns) ? data.campaigns : [],
         notifications: Array.isArray(data.notifications) ? data.notifications : [],
+      schedulerPhase: data.schedulerPhase || "idle",
       };
     } catch {
       return { entries: [], offers: [], campaigns: [], notifications: [] };
@@ -405,20 +407,20 @@
     const date = nextBusinessDateKey(1);
     const bookings = [
       localDemoBooking({ id: "demo-booking-0900", date, hour: 9, name: "Anna", email: "anna.termin@example.com", service: "Haarschnitt", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
-      localDemoBooking({ id: "demo-booking-1030", date, hour: 10, minute: 30, name: "Maria", email: "maria@example.com", service: "Farbe", staff: "Sophie", notes: "Demo-Termin: wartet auf früheren Slot." }),
-      localDemoBooking({ id: "demo-booking-1300", date, hour: 13, name: "Lisa", email: "lisa@example.com", service: "Schnitt", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
-      localDemoBooking({ id: "demo-booking-cancel", date, hour: 15, name: "Thomas", email: "thomas@example.com", service: "Farbe", staff: "Sophie", status: "cancelled", notes: "Kunde hat abgesagt - freier Slot erkannt." }),
-      localDemoBooking({ id: "demo-booking-1630", date, hour: 16, minute: 30, name: "Sarah", email: "sarah@example.com", service: "Styling", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
+      localDemoBooking({ id: "demo-booking-1100", date, hour: 11, name: "Lisa", email: "lisa@example.com", service: "Farbe", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
+      localDemoBooking({ id: "demo-booking-cancel", date, hour: 14, name: "Maria", email: "maria@example.com", service: "Farbe", staff: "Sophie", status: "cancelled", notes: "Kunde hat abgesagt - freier Slot erkannt." }),
+      localDemoBooking({ id: "demo-booking-1600", date, hour: 16, name: "Thomas", email: "thomas@example.com", service: "Styling", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
     ];
     const waitlist = {
       entries: [
-        localDemoEntry({ id: "demo-entry-maria", name: "Maria", phone: "+49 170 1111111", email: "maria@example.com", service: "Farbe", date, earliestTime: "14:30", latestTime: "16:00", ranking: 10, currentAppointmentTime: "17:00", staffPreference: "Sophie", notes: "Möchte gerne früher kommen, wenn Farbe frei wird." }),
-        localDemoEntry({ id: "demo-entry-julia", name: "Julia", phone: "+49 170 2222222", email: "julia@example.com", service: "Farbe", date, earliestTime: "15:00", latestTime: "17:00", ranking: 3, currentAppointmentTime: "17:30", staffPreference: "Egal", notes: "Zweite passende Wartelisten-Kundin." }),
+        localDemoEntry({ id: "demo-entry-sophie", name: "Sophie", phone: "+49 170 1111111", email: "sophie@example.com", service: "Farbe", date, earliestTime: "13:30", latestTime: "15:00", ranking: 10, currentAppointmentTime: "17:00", staffPreference: "Sophie", notes: "Passt perfekt zum freigewordenen Farbtermin." }),
+        localDemoEntry({ id: "demo-entry-julia", name: "Julia", phone: "+49 170 2222222", email: "julia@example.com", service: "Farbe", date, earliestTime: "14:00", latestTime: "17:00", ranking: 3, currentAppointmentTime: "17:30", staffPreference: "Egal", notes: "Zweite passende Wartelisten-Kundin." }),
         localDemoEntry({ id: "demo-entry-clara", name: "Clara", phone: "+49 170 3333333", email: "clara@example.com", service: "Styling", date, earliestTime: "10:00", latestTime: "15:00", ranking: 1, currentAppointmentTime: "18:00", staffPreference: "Sophie", notes: "Passt bewusst nicht, weil der Service ein anderer ist." }),
       ],
       offers: [],
       campaigns: [],
       notifications: [],
+      schedulerPhase: "detected",
     };
     localStorage.setItem("bookings", JSON.stringify(bookings));
     saveLocalWaitlist(waitlist);
@@ -569,6 +571,7 @@
     waitlist.campaigns.unshift(campaign);
     waitlist.offers.unshift(...offers);
     waitlist.notifications.unshift(...notifications);
+    waitlist.schedulerPhase = notifications.length ? "notified" : "matched";
     saveLocalWaitlist(waitlist);
     return { matches, offers, campaign };
   }
@@ -623,6 +626,7 @@
     }
     const campaign = waitlist.campaigns.find((item) => item.id === offer.campaignId);
     if (campaign) campaign.status = "booked";
+    waitlist.schedulerPhase = "rescued";
     saveLocalWaitlist(waitlist);
     return { booking: rescuedBooking, offer };
   }
@@ -637,6 +641,49 @@
     }
     saveLocalWaitlist(waitlist);
     return { offer };
+  }
+
+  function cancelledDemoBooking() {
+    return getLocalBookings().find((booking) => booking.id === "demo-booking-cancel" && booking.status === "cancelled");
+  }
+
+  function clearSchedulerTimers() {
+    schedulerTimers.forEach((timer) => clearTimeout(timer));
+    schedulerTimers = [];
+  }
+
+  function setLocalSchedulerPhase(phase) {
+    const waitlist = getLocalWaitlist();
+    waitlist.schedulerPhase = phase;
+    saveLocalWaitlist(waitlist);
+    adminState.waitlist = waitlist;
+    renderWaitlist(waitlist);
+  }
+
+  function startLocalSchedulerDemoIfNeeded() {
+    const waitlist = getLocalWaitlist();
+    const cancelled = cancelledDemoBooking();
+    if (!cancelled || waitlist.notifications.length || waitlist.schedulerPhase === "rescued") return;
+
+    clearSchedulerTimers();
+    if (waitlist.schedulerPhase !== "detected") {
+      waitlist.schedulerPhase = "detected";
+      saveLocalWaitlist(waitlist);
+      adminState.waitlist = waitlist;
+      renderWaitlist(waitlist);
+    }
+
+    schedulerTimers.push(setTimeout(() => {
+      setLocalSchedulerPhase("matched");
+    }, 900));
+
+    schedulerTimers.push(setTimeout(() => {
+      createLocalOffersForCancellation(cancelled);
+      const nextWaitlist = getLocalWaitlist();
+      adminState.waitlist = nextWaitlist;
+      renderWaitlist(nextWaitlist);
+      renderAdminBookings(getLocalBookings());
+    }, 1800));
   }
 
   function demoBookingForSlot(bookings, slotKey) {
@@ -803,7 +850,7 @@
         <td>${statusPill(status)}</td>
         <td>${escapeHtml(b.email || "—")}</td>
         <td>${escapeHtml(b.notes || "—")}</td>
-        <td><button type="button" class="btn ${isCancelled ? "primary" : "ghost"} small delete-booking-btn" data-id="${encodeURIComponent(String(b.id || ""))}" data-source="${escapeHtml(b.source || "server")}" ${isCancelled && b.id ? "" : "disabled"}>${isCancelled ? "Warteliste benachrichtigen" : "Bestätigt"}</button></td>
+        <td>${isCancelled ? '<span class="hint">Automatik läuft</span>' : '<span class="hint">—</span>'}</td>
       </tr>`;
         }
       )
@@ -821,22 +868,24 @@
     const entries = Array.isArray(data.entries) ? data.entries : [];
     const offers = Array.isArray(data.offers) ? data.offers : [];
     const notifications = Array.isArray(data.notifications) ? data.notifications : (data.messages || []);
-    const systemHtml = offers.length || notifications.length
-      ? `<div class="system-panel simple-system-panel">
-          <div class="system-line ok"><span></span>Freier Slot erkannt</div>
-          <div class="system-line ok"><span></span>Suche passende Wartelisten-Kunden...</div>
-          <div class="match-result">
-            <span>System-Aktion</span>
-            <strong>${notifications.length ? "Passender Kunde gefunden und benachrichtigt." : "Warteliste wird geprüft."}</strong>
-          </div>
-        </div>`
-      : `<div class="system-panel simple-system-panel">
-          <div class="system-line"><span></span>Wartet auf abgesagten Termin</div>
-          <div class="match-result">
-            <span>System-Aktion</span>
-            <strong>Klicke beim roten Termin auf „Warteliste benachrichtigen“.</strong>
-          </div>
-        </div>`;
+    const phase = data.schedulerPhase || (notifications.length ? "notified" : "detected");
+    const systemHtml = `<div class="system-panel simple-system-panel scheduler-live ${phase}">
+      <h3>🤖 Smart Scheduler</h3>
+      <div class="system-line ok"><span></span>Terminabsage erkannt</div>
+      <div class="match-result">
+        <span>Freier Slot</span>
+        <strong>14:00 - Farbe</strong>
+        <p>Status: ${phase === "detected" ? "Analysiere Warteliste..." : phase === "matched" ? "Passende Kunden gefunden" : phase === "rescued" ? "Termin gerettet" : "Kunden-Nachricht gesendet"}</p>
+      </div>
+      ${(phase === "matched" || phase === "notified" || phase === "rescued") ? `
+        <div class="match-card">
+          <strong>Sophie</strong>
+          <p>✓ Service passt</p>
+          <p>✓ Zeit passt</p>
+          <p>✓ Mitarbeiter passt</p>
+        </div>
+      ` : ""}
+    </div>`;
 
     const entriesHtml = entries.length
       ? `<div class="table-wrap"><table class="bookings-table">
@@ -887,7 +936,6 @@
               <pre>${escapeHtml(notification.message || "")}</pre>
               <div class="whatsapp-actions">
                 <button type="button" class="btn primary small take-notification-btn" data-token="${encodeURIComponent(notification.token || "")}" ${canAct ? "" : "disabled"}>${escapeHtml(notification.actionLabel || "Termin übernehmen")}</button>
-                <button type="button" class="btn ghost small decline-notification-btn" data-token="${encodeURIComponent(notification.token || "")}" ${canAct ? "" : "disabled"}>${escapeHtml(notification.declineLabel || "Nein danke")}</button>
               </div>
             </article>`;
           })
@@ -993,6 +1041,7 @@
         adminState.waitlist = localWaitlist;
         renderWaitlist(localWaitlist);
         renderDemoDashboard();
+        startLocalSchedulerDemoIfNeeded();
         return true;
       }
       adminState.waitlist = localWaitlist;
@@ -1031,6 +1080,7 @@
     } catch {
       seedLocalDemoData();
       await refreshAdminDemo();
+      startLocalSchedulerDemoIfNeeded();
       setAdminStatus("GitHub-Pages-Demo geladen: Alles läuft lokal im Browser.", "ok");
     }
   }
@@ -1130,6 +1180,7 @@
     } catch (err) {
       seedLocalDemoData();
       await refreshAdminDemo();
+      startLocalSchedulerDemoIfNeeded();
       setAdminStatus("GitHub-Pages-Demo zurückgesetzt: lokale Beispieldaten sind bereit.", "ok");
     } finally {
       if (btn) {
