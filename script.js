@@ -321,11 +321,14 @@
   const ADMIN_USER_STORAGE = "booking_admin_user";
   const ADMIN_STORAGE = "booking_admin_key";
   const LOCAL_WAITLIST_STORAGE = "booking_demo_waitlist";
+  const LOCAL_DEMO_VERSION_STORAGE = "booking_demo_version";
+  const CURRENT_DEMO_VERSION = "smart-scheduler-auto-v2";
   const adminState = {
     bookings: [],
     waitlist: { entries: [], offers: [], notifications: [] },
   };
   let schedulerTimers = [];
+  let demoAutoSeeded = false;
 
   function nextBusinessDateKey(daysAhead = 1) {
     const date = new Date();
@@ -424,6 +427,7 @@
     };
     localStorage.setItem("bookings", JSON.stringify(bookings));
     saveLocalWaitlist(waitlist);
+    localStorage.setItem(LOCAL_DEMO_VERSION_STORAGE, CURRENT_DEMO_VERSION);
     return { bookings, waitlist };
   }
 
@@ -1078,11 +1082,14 @@
   }
 
   async function ensureDemoDataLoaded() {
-    if (!hasCurrentLocalDemoData()) {
+    const versionMatches = localStorage.getItem(LOCAL_DEMO_VERSION_STORAGE) === CURRENT_DEMO_VERSION;
+    if (!demoAutoSeeded || !versionMatches || !hasCurrentLocalDemoData()) {
+      demoAutoSeeded = true;
       await resetDemoData({ confirmFirst: false });
       setAdminStatus("Demo-Daten geladen: Smart Scheduler startet automatisch.", "ok");
       return;
     }
+    demoAutoSeeded = true;
     startLocalSchedulerDemoIfNeeded();
   }
 
@@ -1207,10 +1214,8 @@
     const source = btn.dataset.source || "server";
     if (!id) return;
 
-    if (!window.confirm("Freien Slot erkennen und Warteliste benachrichtigen?")) return;
-
     btn.disabled = true;
-    btn.textContent = "Absage läuft…";
+    btn.textContent = "Automatik läuft…";
 
     try {
       let waitlistMessage = "";
