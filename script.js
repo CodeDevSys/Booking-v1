@@ -329,6 +329,7 @@
   };
   let schedulerTimers = [];
   let demoAutoSeeded = false;
+  let overlaySequenceRunning = false;
 
   function nextBusinessDateKey(daysAhead = 1) {
     const date = new Date();
@@ -665,6 +666,30 @@
   function clearSchedulerTimers() {
     schedulerTimers.forEach((timer) => clearTimeout(timer));
     schedulerTimers = [];
+    overlaySequenceRunning = false;
+    hideDemoOverlay();
+  }
+
+  function showDemoOverlay(icon, title, text = "") {
+    const overlay = $("#demo-overlay");
+    const iconEl = $("#demo-overlay-icon");
+    const titleEl = $("#demo-overlay-title");
+    const textEl = $("#demo-overlay-text");
+    if (!overlay || !iconEl || !titleEl || !textEl) return;
+    iconEl.textContent = icon;
+    titleEl.textContent = title;
+    textEl.textContent = text;
+    overlay.hidden = false;
+    requestAnimationFrame(() => overlay.classList.add("active"));
+  }
+
+  function hideDemoOverlay() {
+    const overlay = $("#demo-overlay");
+    if (!overlay) return;
+    overlay.classList.remove("active");
+    setTimeout(() => {
+      if (!overlay.classList.contains("active")) overlay.hidden = true;
+    }, 260);
   }
 
   function setLocalSchedulerPhase(phase) {
@@ -681,6 +706,7 @@
     if (!cancelled || waitlist.notifications.length || waitlist.schedulerPhase === "rescued") return;
 
     clearSchedulerTimers();
+    overlaySequenceRunning = true;
     if (waitlist.schedulerPhase !== "detected") {
       waitlist.schedulerPhase = "detected";
       saveLocalWaitlist(waitlist);
@@ -689,8 +715,29 @@
     }
 
     schedulerTimers.push(setTimeout(() => {
+      showDemoOverlay("🧠", "Automatische Terminabsage erkannt", "14:00 Maria — Farbe — ABGESAGT");
+    }, 700));
+
+    schedulerTimers.push(setTimeout(() => {
+      hideDemoOverlay();
+    }, 2700));
+
+    schedulerTimers.push(setTimeout(() => {
+      showDemoOverlay("🔍", "Passender Kunde wird gesucht", "Freier Slot: 14:00 — Farbe");
       setLocalSchedulerPhase("matched");
-    }, 900));
+    }, 3300));
+
+    schedulerTimers.push(setTimeout(() => {
+      hideDemoOverlay();
+    }, 5300));
+
+    schedulerTimers.push(setTimeout(() => {
+      showDemoOverlay("👤", "Passender Kunde gefunden", "Sophie\n✓ Service passt\n✓ Zeit passt\n✓ Mitarbeiter passt");
+    }, 5900));
+
+    schedulerTimers.push(setTimeout(() => {
+      hideDemoOverlay();
+    }, 7900));
 
     schedulerTimers.push(setTimeout(() => {
       createLocalOffersForCancellation(cancelled);
@@ -698,7 +745,31 @@
       adminState.waitlist = nextWaitlist;
       renderWaitlist(nextWaitlist);
       renderAdminBookings(getLocalBookings());
-    }, 1800));
+      showDemoOverlay("📤", "Benachrichtigung wurde gesendet", "Hallo Sophie 👋\n\nEin Termin ist frei geworden:\nHeute 14:00\nFarbe\n\nMöchtest du übernehmen?");
+    }, 8500));
+
+    schedulerTimers.push(setTimeout(() => {
+      hideDemoOverlay();
+    }, 10800));
+
+    schedulerTimers.push(setTimeout(() => {
+      showDemoOverlay("📱", "Kunde akzeptiert den Termin", "Sophie übernimmt den freien Slot automatisch.");
+    }, 11400));
+
+    schedulerTimers.push(setTimeout(async () => {
+      const latestWaitlist = getLocalWaitlist();
+      const sophieOffer = latestWaitlist.offers.find((offer) =>
+        offer.entryId === "demo-entry-sophie" && offer.status === "pending"
+      );
+      if (sophieOffer) localClaimOffer(sophieOffer.token);
+      await refreshAdminDemo();
+      showDemoOverlay("✔", "Termin übernommen", "14:00 Sophie — BESTÄTIGT");
+    }, 13500));
+
+    schedulerTimers.push(setTimeout(() => {
+      hideDemoOverlay();
+      overlaySequenceRunning = false;
+    }, 16000));
   }
 
   function demoBookingForSlot(bookings, slotKey) {
@@ -1272,7 +1343,7 @@
     if (login) login.hidden = true;
     if (story) story.hidden = false;
     if (list) list.hidden = false;
-    if (waitlist) waitlist.hidden = false;
+    if (waitlist) waitlist.hidden = true;
     story?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
