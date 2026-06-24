@@ -434,7 +434,7 @@
       .sort((a, b) => new Date(a.start || 0).getTime() - new Date(b.start || 0).getTime());
     const waitlist = {
       entries: [
-        localDemoEntry({ id: "demo-entry-sophie", name: "Sophie", phone: "+49 170 1111111", email: "sophie@example.com", service: "Farbe", date, earliestTime: "13:30", latestTime: "15:00", ranking: 10, currentAppointmentTime: "17:00", staffPreference: "Sophie", notes: "Passt perfekt zum freigewordenen Farbtermin." }),
+        localDemoEntry({ id: "demo-entry-sara", name: "Sara", phone: "+49 170 1111111", email: "sara@example.com", service: "Farbe", date, earliestTime: "13:30", latestTime: "15:00", ranking: 10, currentAppointmentTime: "17:00", staffPreference: "Sophie", notes: "Passt perfekt zum freigewordenen Farbtermin." }),
         localDemoEntry({ id: "demo-entry-julia", name: "Julia", phone: "+49 170 2222222", email: "julia@example.com", service: "Farbe", date, earliestTime: "14:00", latestTime: "17:00", ranking: 3, currentAppointmentTime: "17:30", staffPreference: "Egal", notes: "Zweite passende Wartelisten-Kundin." }),
         localDemoEntry({ id: "demo-entry-clara", name: "Clara", phone: "+49 170 3333333", email: "clara@example.com", service: "Styling", date, earliestTime: "10:00", latestTime: "15:00", ranking: 1, currentAppointmentTime: "18:00", staffPreference: "Sophie", notes: "Passt bewusst nicht, weil der Service ein anderer ist." }),
       ],
@@ -457,7 +457,7 @@
       booking.name === "Maria" &&
       booking.service === "Farbe" &&
       booking.status === "cancelled"
-    ) && waitlist.entries.some((entry) => entry.id === "demo-entry-sophie");
+    ) && waitlist.entries.some((entry) => entry.id === "demo-entry-sara");
   }
 
   function escapeHtml(text) {
@@ -718,7 +718,7 @@
         <div class="takeover-pane system-view">
           <span class="pane-label">System / Admin Sicht</span>
           <h3>📤 Nachricht gesendet</h3>
-          <p><strong>An:</strong> Sophie</p>
+          <p><strong>An:</strong> Sara</p>
           <p><strong>Termin:</strong> 14:00</p>
           <p><strong>Service:</strong> Farbe</p>
           <p><strong>Status:</strong> ✅ zugestellt</p>
@@ -727,8 +727,8 @@
           <span class="pane-label">Kundenansicht Simulation</span>
           <h3>📱 WhatsApp-style Nachricht</h3>
           <div class="phone-message">
-            <strong>Sophie 👤</strong>
-            <p>Hallo Sophie 👋</p>
+            <strong>Sara 👤</strong>
+            <p>Hallo Sara 👋</p>
             <p>Ein Termin ist frei geworden:</p>
             <p><strong>Heute 14:00<br>Farbe</strong></p>
             <button type="button" class="btn primary big" id="overlay-takeover-btn">Termin übernehmen</button>
@@ -759,12 +759,12 @@
     }
     localClaimOffer(token);
     await refreshAdminDemo();
-    showDemoOverlay("✔", "Kunde hat den Termin angenommen", "Sophie bestätigt den freigewordenen Termin.");
+    showDemoOverlay("✔", "Kunde hat den Termin angenommen", "Sara bestätigt den freigewordenen Termin.");
     schedulerTimers.push(setTimeout(() => {
       hideDemoOverlay();
     }, 3300));
     schedulerTimers.push(setTimeout(() => {
-      showDemoOverlay("✔", "Termin erfolgreich übernommen", "14:00 Sophie — BESTÄTIGT");
+      showDemoOverlay("✔", "Termin erfolgreich übernommen", "14:00 Sara — BESTÄTIGT");
     }, 4700));
     schedulerTimers.push(setTimeout(() => {
       hideDemoOverlay();
@@ -812,7 +812,7 @@
     }, demoStepStart(1) + DEMO_POPUP_VISIBLE_MS));
 
     schedulerTimers.push(setTimeout(() => {
-      showDemoOverlay("👤", "Passender Kunde gefunden", "Sophie\n\n✓ Farbe\n✓ verfügbar\n✓ passt zum Zeitpunkt");
+      showDemoOverlay("👤", "Passender Kunde gefunden", "Sara\n\n✓ Farbe\n✓ verfügbar\n✓ passt zum Zeitpunkt");
     }, demoStepStart(2)));
 
     schedulerTimers.push(setTimeout(() => {
@@ -834,10 +834,10 @@
 
     schedulerTimers.push(setTimeout(() => {
       const latestWaitlist = getLocalWaitlist();
-      const sophieOffer = latestWaitlist.offers.find((offer) =>
-        offer.entryId === "demo-entry-sophie" && offer.status === "pending"
+      const saraOffer = latestWaitlist.offers.find((offer) =>
+        offer.entryId === "demo-entry-sara" && offer.status === "pending"
       );
-      if (sophieOffer) showTakeoverOverlay(sophieOffer.token);
+      if (saraOffer) showTakeoverOverlay(saraOffer.token);
     }, demoStepStart(4)));
   }
 
@@ -1034,7 +1034,7 @@
       </div>
       ${(phase === "matched" || phase === "notified" || phase === "rescued") ? `
         <div class="match-card">
-          <strong>Sophie</strong>
+          <strong>Sara</strong>
           <p>✓ Service passt</p>
           <p>✓ Zeit passt</p>
           <p>✓ Mitarbeiter passt</p>

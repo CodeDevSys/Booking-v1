@@ -649,10 +649,10 @@ async function resetDemoData() {
 
   store.entries.splice(0, store.entries.length,
     demoEntry({
-      id: "demo-entry-sophie",
-      name: "Sophie",
+      id: "demo-entry-sara",
+      name: "Sara",
       phone: "+49 170 1111111",
-      email: "sophie@example.com",
+      email: "sara@example.com",
       service: "Farbe",
       date,
       earliestTime: "13:30",
