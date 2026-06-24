@@ -209,6 +209,10 @@ function staffMatches(entry, slot) {
   return !slotStaff || slotStaff === preference;
 }
 
+function serviceMatches(entry, slot) {
+  return sanitizeText(entry.service).toLowerCase() === sanitizeText(slot.service).toLowerCase();
+}
+
 function availabilityMatches(entry, slot) {
   if (entry.preferredDate && entry.preferredDate !== slot.date) return false;
 
@@ -233,6 +237,7 @@ function entryScore(entry, slot) {
 function findMatches(slot) {
   const freeMinutes = slotDurationMinutes(slot);
   return activeEntries()
+    .filter((entry) => serviceMatches(entry, slot))
     .filter((entry) => entry.durationMinutes <= freeMinutes)
     .filter((entry) => staffMatches(entry, slot))
     .filter((entry) => availabilityMatches(entry, slot))
