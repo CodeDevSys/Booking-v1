@@ -38,25 +38,6 @@
       </form>
     </section>
 
-    <section class="card demo-story-card" id="demo-story-card" hidden>
-      <div class="demo-hero">
-        <div>
-          <p class="eyebrow">Produktdemo für Friseursalons</p>
-          <h2>Leere Termine automatisch retten</h2>
-          <p class="hint">Die App verkauft keine Termine. Sie verhindert Umsatzverlust durch abgesagte Slots.</p>
-        </div>
-        <button type="button" class="btn primary big" id="demo-reset-hero-btn">Demo-Daten laden</button>
-      </div>
-
-      <div class="role-grid" aria-label="Demo-Rollen">
-        <div class="role-card"><span>1</span><strong>Kunde</strong><p>Bucht ohne Login und kann später absagen.</p></div>
-        <div class="role-card"><span>2</span><strong>Salon-Mitarbeiter</strong><p>Sieht Kalender, Absagen und gerettete Termine.</p></div>
-        <div class="role-card"><span>3</span><strong>Automatisches Planungssystem</strong><p>Matched Warteliste und sendet Mock-Benachrichtigungen.</p></div>
-      </div>
-
-      <div id="demo-dashboard"><p class="loading">Demo-Dashboard wird geladen…</p></div>
-    </section>
-
     <section class="card" id="list-card" hidden>
       <div class="admin-toolbar">
         <button type="button" class="btn primary small" id="refresh-btn">Aktualisieren</button>
@@ -66,7 +47,7 @@
       </div>
       <div class="demo-flow">
         <strong>Demo-Flow:</strong>
-        Kunde bucht → Termin erscheint hier → „Absage simulieren“ bei 14:00 → System matched Anna → Mock-WhatsApp erscheint unten → Termin wird mit einem Klick gerettet.
+        Kunde sagt ab → System erkennt freien Slot → Warteliste wird benachrichtigt → Termin wird gerettet.
       </div>
       <div id="bookings-container"><p class="loading">Wird geladen…</p></div>
     </section>
@@ -79,62 +60,6 @@
         </div>
         <button type="button" class="btn ghost small" id="refresh-waitlist-btn">Warteliste aktualisieren</button>
       </div>
-
-      <form id="waitlist-form" class="form compact-form">
-        <div class="form-grid">
-          <label>
-            Name
-            <input type="text" name="name" required autocomplete="name" placeholder="Max Mustermann" />
-          </label>
-          <label>
-            Telefon / WhatsApp-Demo
-            <input type="tel" name="phone" required autocomplete="tel" placeholder="+49 170 1234567" />
-          </label>
-          <label>
-            E-Mail <span class="optional">(optional)</span>
-            <input type="email" name="email" autocomplete="email" placeholder="kunde@example.com" />
-          </label>
-          <label>
-            Service
-            <select name="service">
-              <option value="Haare schneiden">Haare schneiden</option>
-              <option value="Haarstyling">Haarstyling</option>
-              <option value="Haare färben">Haare färben</option>
-            </select>
-          </label>
-          <label>
-            Dauer in Minuten
-            <input type="number" name="durationMinutes" min="15" max="360" step="15" value="60" />
-          </label>
-          <label>
-            Mitarbeiter-Präferenz <span class="optional">(optional)</span>
-            <input type="text" name="staffPreference" placeholder="Egal oder Name" />
-          </label>
-          <label>
-            Wunschdatum <span class="optional">(optional)</span>
-            <input type="date" name="preferredDate" />
-          </label>
-          <label>
-            Frühestens
-            <input type="time" name="earliestTime" value="09:00" />
-          </label>
-          <label>
-            Spätestens
-            <input type="time" name="latestTime" value="17:00" />
-          </label>
-          <label>
-            Ranking-Priorität
-            <input type="number" name="ranking" value="0" />
-          </label>
-        </div>
-        <label>
-          Notizen <span class="optional">(optional)</span>
-          <textarea name="notes" rows="2" placeholder="z. B. nur vormittags, Stammkunde, Farbwunsch"></textarea>
-        </label>
-        <div class="nav-row">
-          <button type="submit" class="btn primary" id="waitlist-submit-btn">Zur Warteliste hinzufügen</button>
-        </div>
-      </form>
 
       <div id="waitlist-container"><p class="loading">Warteliste wird geladen…</p></div>
     </section>

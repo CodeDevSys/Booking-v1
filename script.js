@@ -2,7 +2,7 @@
   "use strict";
 
   const DEFAULT_SERVICE = "Haare schneiden";
-  const DEFAULT_STAFF = "Sophie";
+  const DEMO_STAFF = "Sophie";
   const SLOT_MINUTES = 60;
   const BUSINESS_START = 9;
   const BUSINESS_END = 17;
@@ -10,7 +10,6 @@
   const state = {
     step: 1,
     service: DEFAULT_SERVICE,
-    staff: DEFAULT_STAFF,
     date: null,
     slot: null,
     offlineMode: false,
@@ -216,7 +215,6 @@
     el.innerHTML = `
       <dl>
         <dt>Service</dt><dd>${state.service}</dd>
-        <dt>Mitarbeiter</dt><dd>${state.staff}</dd>
         <dt>Datum</dt><dd>${formatDateLabel(state.date)}</dd>
         <dt>Uhrzeit</dt><dd>${state.slot.label}</dd>
       </dl>
@@ -239,7 +237,6 @@
       email: String(fd.get("email")).trim(),
       notes: fd.get("notes"),
       service: state.service,
-      staff: state.staff,
     };
 
     btn.disabled = true;
@@ -260,8 +257,8 @@
       }
 
       const msg = state.offlineMode
-        ? `${state.service} bei ${state.staff} am ${formatDateLabel(state.date)} um ${state.slot.label}. Auf diesem Gerät gespeichert (Demo).`
-        : `${state.service} bei ${state.staff} am ${formatDateLabel(state.date)} um ${state.slot.label}. Bestätigung an ${payload.email} gesendet.`;
+        ? `${state.service} am ${formatDateLabel(state.date)} um ${state.slot.label}. Auf diesem Gerät gespeichert (Demo).`
+        : `${state.service} am ${formatDateLabel(state.date)} um ${state.slot.label}. Bestätigung an ${payload.email} gesendet.`;
 
       $("#success-message").textContent = msg;
       showStep("success");
@@ -275,7 +272,6 @@
 
   function resetBooking() {
     state.service = DEFAULT_SERVICE;
-    state.staff = DEFAULT_STAFF;
     state.date = null;
     state.slot = null;
     state.offlineMode = false;
@@ -286,9 +282,6 @@
     $("#time-next").disabled = true;
     $$(".service-btn").forEach((b) => {
       b.classList.toggle("selected", b.dataset.service === DEFAULT_SERVICE);
-    });
-    $$(".staff-btn").forEach((b) => {
-      b.classList.toggle("selected", b.dataset.staff === DEFAULT_STAFF);
     });
     $("#details-form").reset();
     showStep(1);
@@ -325,16 +318,6 @@
     });
   }
 
-  function setupStaff() {
-    $$(".staff-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        $$(".staff-btn").forEach((b) => b.classList.remove("selected"));
-        btn.classList.add("selected");
-        state.staff = btn.dataset.staff;
-      });
-    });
-  }
-
   const ADMIN_USER_STORAGE = "booking_admin_user";
   const ADMIN_STORAGE = "booking_admin_key";
   const LOCAL_WAITLIST_STORAGE = "booking_demo_waitlist";
@@ -353,9 +336,9 @@
     return toDateInputValue(date);
   }
 
-  function demoLocalIso(dateKey, hour) {
+  function demoLocalIso(dateKey, hour, minute = 0) {
     const date = parseLocalDate(dateKey);
-    date.setHours(hour, 0, 0, 0);
+    date.setHours(hour, minute, 0, 0);
     return date.toISOString();
   }
 
@@ -377,8 +360,8 @@
     localStorage.setItem(LOCAL_WAITLIST_STORAGE, JSON.stringify(data));
   }
 
-  function localDemoBooking({ id, date, hour, name, email, service, staff, notes }) {
-    const start = demoLocalIso(date, hour);
+  function localDemoBooking({ id, date, hour, minute, name, email, service, staff, status, notes }) {
+    const start = demoLocalIso(date, hour, minute || 0);
     return {
       id,
       date,
@@ -389,7 +372,8 @@
       phone: "",
       notes: notes || "",
       service,
-      staff: staff || DEFAULT_STAFF,
+      staff: staff || DEMO_STAFF,
+      status: status || "confirmed",
       durationMinutes: SLOT_MINUTES,
       waitlistEntryId: "",
       source: "browser",
@@ -420,16 +404,17 @@
   function seedLocalDemoData() {
     const date = nextBusinessDateKey(1);
     const bookings = [
-      localDemoBooking({ id: "demo-booking-1000", date, hour: 10, name: "Lena Hofmann", email: "lena@example.com", service: "Haare schneiden", staff: "Sophie", notes: "10:00 Haarschnitt." }),
-      localDemoBooking({ id: "demo-booking-1100", date, hour: 11, name: "Marie Klein", email: "marie@example.com", service: "Haare färben", staff: "Sophie", notes: "11:00 Farbe." }),
-      localDemoBooking({ id: "demo-booking-cancel", date, hour: 14, name: "Mia Schneider", email: "mia@example.com", service: "Haare färben", staff: "Sophie", notes: "14:00 Farbe - diesen Termin in der Demo absagen." }),
-      localDemoBooking({ id: "demo-booking-1600", date, hour: 16, name: "Laura Becker", email: "laura@example.com", service: "Haare schneiden", staff: "Sophie", notes: "16:00 Haarschnitt." }),
+      localDemoBooking({ id: "demo-booking-0900", date, hour: 9, name: "Anna", email: "anna.termin@example.com", service: "Haarschnitt", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
+      localDemoBooking({ id: "demo-booking-1030", date, hour: 10, minute: 30, name: "Maria", email: "maria@example.com", service: "Farbe", staff: "Sophie", notes: "Demo-Termin: wartet auf früheren Slot." }),
+      localDemoBooking({ id: "demo-booking-1300", date, hour: 13, name: "Lisa", email: "lisa@example.com", service: "Schnitt", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
+      localDemoBooking({ id: "demo-booking-cancel", date, hour: 15, name: "Thomas", email: "thomas@example.com", service: "Farbe", staff: "Sophie", status: "cancelled", notes: "Kunde hat abgesagt - freier Slot erkannt." }),
+      localDemoBooking({ id: "demo-booking-1630", date, hour: 16, minute: 30, name: "Sarah", email: "sarah@example.com", service: "Styling", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
     ];
     const waitlist = {
       entries: [
-        localDemoEntry({ id: "demo-entry-anna", name: "Anna Müller", phone: "+49 170 1111111", email: "anna@example.com", service: "Haare färben", date, earliestTime: "13:30", latestTime: "15:30", ranking: 10, currentAppointmentTime: "17:00", staffPreference: "Sophie", notes: "Hat 17:00 geplant und möchte gerne früher kommen." }),
-        localDemoEntry({ id: "demo-entry-ben", name: "Ben Fischer", phone: "+49 170 2222222", email: "ben@example.com", service: "Haare färben", date, earliestTime: "14:00", latestTime: "17:00", ranking: 3, currentAppointmentTime: "17:30", staffPreference: "Egal", notes: "Zweite passende Option für First-Come." }),
-        localDemoEntry({ id: "demo-entry-clara", name: "Clara Neumann", phone: "+49 170 3333333", email: "clara@example.com", service: "Haarstyling", date, earliestTime: "10:00", latestTime: "15:00", ranking: 1, currentAppointmentTime: "18:00", staffPreference: "Sophie", notes: "Passt bewusst nicht, weil der Service ein anderer ist." }),
+        localDemoEntry({ id: "demo-entry-maria", name: "Maria", phone: "+49 170 1111111", email: "maria@example.com", service: "Farbe", date, earliestTime: "14:30", latestTime: "16:00", ranking: 10, currentAppointmentTime: "17:00", staffPreference: "Sophie", notes: "Möchte gerne früher kommen, wenn Farbe frei wird." }),
+        localDemoEntry({ id: "demo-entry-julia", name: "Julia", phone: "+49 170 2222222", email: "julia@example.com", service: "Farbe", date, earliestTime: "15:00", latestTime: "17:00", ranking: 3, currentAppointmentTime: "17:30", staffPreference: "Egal", notes: "Zweite passende Wartelisten-Kundin." }),
+        localDemoEntry({ id: "demo-entry-clara", name: "Clara", phone: "+49 170 3333333", email: "clara@example.com", service: "Styling", date, earliestTime: "10:00", latestTime: "15:00", ranking: 1, currentAppointmentTime: "18:00", staffPreference: "Sophie", notes: "Passt bewusst nicht, weil der Service ein anderer ist." }),
       ],
       offers: [],
       campaigns: [],
@@ -472,6 +457,8 @@
   function statusLabel(status) {
     const labels = {
       active: "Aktiv",
+      confirmed: "Bestätigt",
+      cancelled: "Abgesagt",
       pending: "Angeboten",
       open: "Offen",
       booked: "Gebucht",
@@ -526,7 +513,7 @@
 
   function createLocalNotification(entry, booking, offer) {
     const time = formatBookingTime(booking.start);
-    const message = `Hallo ${entry.name} 👋\n\nEin früherer Termin ist verfügbar:\nHeute ${time} statt ${entry.currentAppointmentTime || "17:00"}.\n\nMöchtest du den Termin übernehmen?`;
+    const message = `Hallo ${entry.name} 👋\n\nEin Termin ist frei geworden:\nHeute ${time}\n${booking.service}\n\nMöchtest du diesen Termin übernehmen?`;
     return {
       id: `local-notification-${Date.now()}-${entry.id}`,
       offerId: offer.id,
@@ -594,8 +581,14 @@
     if (!entry) throw new Error("Wartelistenkunde nicht gefunden");
 
     const bookings = getLocalBookings();
-    bookings.push({
-      id: `local-rescue-${Date.now()}`,
+    const cancelledBooking = bookings.find((booking) =>
+      booking.status === "cancelled" &&
+      booking.start === offer.slot.start &&
+      booking.service === offer.slot.service
+    );
+    const rescuedBooking = {
+      ...(cancelledBooking || {}),
+      id: cancelledBooking?.id || `local-rescue-${Date.now()}`,
       date: offer.slot.date,
       start: offer.slot.start,
       end: new Date(new Date(offer.slot.start).getTime() + SLOT_MINUTES * 60000).toISOString(),
@@ -604,11 +597,17 @@
       phone: entry.phone,
       notes: entry.notes,
       service: entry.service,
-      staff: offer.slot.staff || entry.staffPreference || DEFAULT_STAFF,
+      staff: offer.slot.staff || entry.staffPreference || DEMO_STAFF,
+      status: "confirmed",
       durationMinutes: SLOT_MINUTES,
       waitlistEntryId: entry.id,
       source: "browser",
-    });
+    };
+    if (cancelledBooking) {
+      Object.assign(cancelledBooking, rescuedBooking);
+    } else {
+      bookings.push(rescuedBooking);
+    }
     localStorage.setItem("bookings", JSON.stringify(bookings));
 
     offer.status = "booked";
@@ -625,7 +624,7 @@
     const campaign = waitlist.campaigns.find((item) => item.id === offer.campaignId);
     if (campaign) campaign.status = "booked";
     saveLocalWaitlist(waitlist);
-    return { booking: bookings[bookings.length - 1], offer };
+    return { booking: rescuedBooking, offer };
   }
 
   function localDeclineOffer(token) {
@@ -792,21 +791,26 @@
 
     const rows = bookings
       .map(
-        (b) => `<tr>
+        (b) => {
+          const isCancelled = b.status === "cancelled";
+          const status = b.status || "confirmed";
+          return `<tr class="${isCancelled ? "cancelled-row" : ""}">
         <td>${formatBookingDate(b.start)}</td>
         <td>${formatBookingTime(b.start)}</td>
         <td>${escapeHtml(b.service || "—")}</td>
         <td>${escapeHtml(b.staff || "—")}</td>
         <td>${escapeHtml(b.name || "—")}</td>
+        <td>${statusPill(status)}</td>
         <td>${escapeHtml(b.email || "—")}</td>
         <td>${escapeHtml(b.notes || "—")}</td>
-        <td><button type="button" class="btn ghost small delete-booking-btn" data-id="${encodeURIComponent(String(b.id || ""))}" data-source="${escapeHtml(b.source || "server")}" ${b.id ? "" : "disabled"}>Absage simulieren</button></td>
-      </tr>`
+        <td><button type="button" class="btn ${isCancelled ? "primary" : "ghost"} small delete-booking-btn" data-id="${encodeURIComponent(String(b.id || ""))}" data-source="${escapeHtml(b.source || "server")}" ${isCancelled && b.id ? "" : "disabled"}>${isCancelled ? "Warteliste benachrichtigen" : "Bestätigt"}</button></td>
+      </tr>`;
+        }
       )
       .join("");
 
     container.innerHTML = `<div class="table-wrap"><table class="bookings-table">
-        <thead><tr><th>Datum</th><th>Uhrzeit</th><th>Service</th><th>Mitarbeiter</th><th>Kunde</th><th>E-Mail</th><th>Notizen</th><th>Aktion</th></tr></thead>
+        <thead><tr><th>Datum</th><th>Uhrzeit</th><th>Service</th><th>Mitarbeiter</th><th>Kunde</th><th>Status</th><th>E-Mail</th><th>Notizen</th><th>Aktion</th></tr></thead>
         <tbody>${rows}</tbody></table></div>`;
   }
 
@@ -817,6 +821,22 @@
     const entries = Array.isArray(data.entries) ? data.entries : [];
     const offers = Array.isArray(data.offers) ? data.offers : [];
     const notifications = Array.isArray(data.notifications) ? data.notifications : (data.messages || []);
+    const systemHtml = offers.length || notifications.length
+      ? `<div class="system-panel simple-system-panel">
+          <div class="system-line ok"><span></span>Freier Slot erkannt</div>
+          <div class="system-line ok"><span></span>Suche passende Wartelisten-Kunden...</div>
+          <div class="match-result">
+            <span>System-Aktion</span>
+            <strong>${notifications.length ? "Passender Kunde gefunden und benachrichtigt." : "Warteliste wird geprüft."}</strong>
+          </div>
+        </div>`
+      : `<div class="system-panel simple-system-panel">
+          <div class="system-line"><span></span>Wartet auf abgesagten Termin</div>
+          <div class="match-result">
+            <span>System-Aktion</span>
+            <strong>Klicke beim roten Termin auf „Warteliste benachrichtigen“.</strong>
+          </div>
+        </div>`;
 
     const entriesHtml = entries.length
       ? `<div class="table-wrap"><table class="bookings-table">
@@ -875,6 +895,10 @@
       : '<p class="empty">Noch keine Demo-Notifications. Simuliere eine Absage, um hier die WhatsApp-ähnliche Nachricht zu sehen.</p>';
 
     container.innerHTML = `
+      <div class="waitlist-section">
+        <h3>System-Aktion</h3>
+        ${systemHtml}
+      </div>
       <div class="waitlist-section">
         <h3>Aktive Warteliste (${entries.length})</h3>
         ${entriesHtml}
@@ -1134,7 +1158,7 @@
     const source = btn.dataset.source || "server";
     if (!id) return;
 
-    if (!window.confirm("Kundenabsage simulieren und Warteliste automatisch prüfen?")) return;
+    if (!window.confirm("Freien Slot erkennen und Warteliste benachrichtigen?")) return;
 
     btn.disabled = true;
     btn.textContent = "Absage läuft…";
@@ -1142,9 +1166,10 @@
     try {
       let waitlistMessage = "";
       if (source === "browser") {
-        const deleted = deleteLocalBooking(id);
-        if (deleted) {
-          const result = createLocalOffersForCancellation(deleted);
+        const bookings = getLocalBookings();
+        const cancelled = bookings.find((booking) => String(booking.id) === String(id));
+        if (cancelled) {
+          const result = createLocalOffersForCancellation(cancelled);
           const offerCount = result.offers?.length || 0;
           waitlistMessage = offerCount
             ? `${offerCount} passende Demo-Notification${offerCount === 1 ? "" : "s"} erzeugt.`
@@ -1407,7 +1432,6 @@
       initDateInput();
       setupNavigation();
       setupServices();
-      setupStaff();
 
       const form = $("#details-form");
       if (form) form.addEventListener("submit", submitBooking);

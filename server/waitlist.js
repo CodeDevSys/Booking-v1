@@ -275,10 +275,11 @@ function notificationBody(entry, offer, url) {
   return [
     `Hallo ${entry.name} 👋`,
     "",
-    "Ein früherer Termin ist verfügbar:",
-    `Heute ${formatBusinessTime(offer.slot.start)} statt ${currentTime}.`,
+    "Ein Termin ist frei geworden:",
+    `Heute ${formatBusinessTime(offer.slot.start)}`,
+    offer.slot.service,
     "",
-    "Möchtest du den Termin übernehmen?",
+    "Möchtest du diesen Termin übernehmen?",
     url ? `Demo-Link: ${url}` : "",
   ].filter((line) => line !== "").join("\n");
 }
@@ -554,12 +555,12 @@ function nextBusinessDateKey(daysAhead = 1) {
   return date.toISOString().slice(0, 10);
 }
 
-function demoIso(dateKey, utcHour) {
-  return new Date(`${dateKey}T${String(utcHour).padStart(2, "0")}:00:00.000Z`).toISOString();
+function demoIso(dateKey, utcHour, utcMinute = 0) {
+  return new Date(`${dateKey}T${String(utcHour).padStart(2, "0")}:${String(utcMinute).padStart(2, "0")}:00.000Z`).toISOString();
 }
 
-function demoBooking({ id, date, utcHour, name, email, service, staff, notes }) {
-  const start = demoIso(date, utcHour);
+function demoBooking({ id, date, utcHour, utcMinute, name, email, service, staff, status, notes }) {
+  const start = demoIso(date, utcHour, utcMinute || 0);
   return {
     id,
     date,
@@ -572,6 +573,7 @@ function demoBooking({ id, date, utcHour, name, email, service, staff, notes }) 
     service: service || DEFAULT_SERVICE,
     durationMinutes: DEFAULT_DURATION_MINUTES,
     staff: staff || "Sophie",
+    status: status || "confirmed",
     waitlistEntryId: "",
     createdAt: new Date().toISOString(),
   };
@@ -603,82 +605,95 @@ async function resetDemoData() {
   const laterDate = nextBusinessDateKey(2);
   const bookings = calendar.resetBookings([
     demoBooking({
-      id: "demo-booking-1000",
+      id: "demo-booking-0900",
       date,
-      utcHour: 8,
-      name: "Lena Hofmann",
-      email: "lena@example.com",
-      service: "Haare schneiden",
+      utcHour: 7,
+      name: "Anna",
+      email: "anna.termin@example.com",
+      service: "Haarschnitt",
       staff: "Sophie",
-      notes: "10:00 Haarschnitt.",
+      notes: "Demo-Termin: bestätigt.",
     }),
     demoBooking({
-      id: "demo-booking-1100",
+      id: "demo-booking-1030",
       date,
-      utcHour: 9,
-      name: "Marie Klein",
-      email: "marie@example.com",
-      service: "Haare färben",
+      utcHour: 8,
+      utcMinute: 30,
+      name: "Maria",
+      email: "maria@example.com",
+      service: "Farbe",
       staff: "Sophie",
-      notes: "11:00 Farbe.",
+      notes: "Demo-Termin: wartet auf früheren Slot.",
+    }),
+    demoBooking({
+      id: "demo-booking-1300",
+      date,
+      utcHour: 11,
+      name: "Lisa",
+      email: "lisa@example.com",
+      service: "Schnitt",
+      staff: "Sophie",
+      notes: "Demo-Termin: bestätigt.",
     }),
     demoBooking({
       id: "demo-booking-cancel",
       date,
-      utcHour: 12,
-      name: "Mia Schneider",
-      email: "mia@example.com",
-      service: "Haare färben",
+      utcHour: 13,
+      name: "Thomas",
+      email: "thomas@example.com",
+      service: "Farbe",
       staff: "Sophie",
-      notes: "14:00 Farbe - diesen Termin in der Demo absagen.",
+      status: "cancelled",
+      notes: "Kunde hat abgesagt - freier Slot erkannt.",
     }),
     demoBooking({
-      id: "demo-booking-1600",
+      id: "demo-booking-1630",
       date,
       utcHour: 14,
-      name: "Laura Becker",
-      email: "laura@example.com",
-      service: "Haare schneiden",
+      utcMinute: 30,
+      name: "Sarah",
+      email: "sarah@example.com",
+      service: "Styling",
       staff: "Sophie",
-      notes: "16:00 Haarschnitt.",
+      notes: "Demo-Termin: bestätigt.",
     }),
   ]);
 
   store.entries.splice(0, store.entries.length,
     demoEntry({
-      id: "demo-entry-anna",
-      name: "Anna Müller",
+      id: "demo-entry-maria",
+      name: "Maria",
       phone: "+49 170 1111111",
-      email: "anna@example.com",
-      service: "Haare färben",
+      email: "maria@example.com",
+      service: "Farbe",
       date,
-      earliestTime: "13:30",
-      latestTime: "15:30",
+      earliestTime: "14:30",
+      latestTime: "16:00",
       currentAppointmentTime: "17:00",
       staffPreference: "Sophie",
       ranking: 10,
-      notes: "Hat 17:00 geplant und möchte gerne früher kommen.",
+      notes: "Möchte gerne früher kommen, wenn Farbe frei wird.",
     }),
     demoEntry({
-      id: "demo-entry-ben",
-      name: "Ben Fischer",
+      id: "demo-entry-julia",
+      name: "Julia",
       phone: "+49 170 2222222",
-      email: "ben@example.com",
-      service: "Haare färben",
+      email: "julia@example.com",
+      service: "Farbe",
       date,
-      earliestTime: "14:00",
+      earliestTime: "15:00",
       latestTime: "17:00",
       currentAppointmentTime: "17:30",
       staffPreference: "Egal",
       ranking: 3,
-      notes: "Zweite passende Option für First-Come.",
+      notes: "Zweite passende Wartelisten-Kundin.",
     }),
     demoEntry({
       id: "demo-entry-clara",
-      name: "Clara Neumann",
+      name: "Clara",
       phone: "+49 170 3333333",
       email: "clara@example.com",
-      service: "Haarstyling",
+      service: "Styling",
       date,
       earliestTime: "10:00",
       latestTime: "15:00",

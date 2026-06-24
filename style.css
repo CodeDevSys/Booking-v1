@@ -716,6 +716,7 @@ body {
 }
 
 .status-pill.active,
+.status-pill.confirmed,
 .status-pill.pending,
 .status-pill.open,
 .status-pill.delivered {
@@ -732,9 +733,22 @@ body {
 .status-pill.expired,
 .status-pill.unavailable,
 .status-pill.superseded,
-.status-pill.declined {
+.status-pill.declined,
+.status-pill.cancelled {
   color: var(--danger);
   background: rgba(248, 113, 113, 0.12);
+}
+
+.cancelled-row {
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.cancelled-row td {
+  border-bottom-color: rgba(248, 113, 113, 0.25);
+}
+
+.simple-system-panel {
+  max-width: 680px;
 }
 
 .notification-list {
