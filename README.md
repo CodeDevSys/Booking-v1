@@ -22,6 +22,15 @@ This branch is prepared as a product demo for salons, not as a production SaaS a
 
 The admin area can add waitlist customers. When a booking is cancelled in the admin demo, the server matches active waitlist entries by service duration, staff preference, and customer availability, then creates WhatsApp-like mock notifications with one-click actions.
 
+Demo story:
+
+1. Customer books without login and selects service, staff member, and time.
+2. The salon employee sees the booking in the admin calendar.
+3. The 14:00 color appointment is cancelled.
+4. The automatic planning system checks service, duration, staff availability, and waitlist preferences.
+5. Anna receives a WhatsApp-like mock notification: "Heute 14:00 statt 17:00."
+6. When Anna accepts, the empty slot is refilled and the admin dashboard shows the saved appointment.
+
 No external notification provider is required:
 
 - no SMS API

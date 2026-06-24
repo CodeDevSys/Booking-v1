@@ -16,7 +16,7 @@ const CASCADE = "cascade";
 const SERVICE_DURATIONS = {
   "Haare schneiden": 60,
   Haarstyling: 60,
-  "Haare färben": 120,
+  "Haare färben": 60,
 };
 
 const store = loadStore();
@@ -266,11 +266,12 @@ function claimDeadline(strategy) {
 }
 
 function notificationBody(entry, offer, url) {
+  const currentTime = entry.currentAppointmentTime || "17:00";
   return [
     `Hallo ${entry.name} 👋`,
     "",
-    "ein Termin ist kurzfristig frei geworden:",
-    `${offer.slot.service} am ${formatBusinessDate(offer.slot.start)} um ${formatBusinessTime(offer.slot.start)}.`,
+    "Ein früherer Termin ist verfügbar:",
+    `Heute ${formatBusinessTime(offer.slot.start)} statt ${currentTime}.`,
     "",
     "Möchtest du den Termin übernehmen?",
     url ? `Demo-Link: ${url}` : "",
@@ -552,7 +553,7 @@ function demoIso(dateKey, utcHour) {
   return new Date(`${dateKey}T${String(utcHour).padStart(2, "0")}:00:00.000Z`).toISOString();
 }
 
-function demoBooking({ id, date, utcHour, name, email, service, notes }) {
+function demoBooking({ id, date, utcHour, name, email, service, staff, notes }) {
   const start = demoIso(date, utcHour);
   return {
     id,
@@ -565,13 +566,13 @@ function demoBooking({ id, date, utcHour, name, email, service, notes }) {
     notes: notes || "",
     service: service || DEFAULT_SERVICE,
     durationMinutes: DEFAULT_DURATION_MINUTES,
-    staff: "",
+    staff: staff || "Sophie",
     waitlistEntryId: "",
     createdAt: new Date().toISOString(),
   };
 }
 
-function demoEntry({ id, name, phone, email, service, date, earliestTime, latestTime, ranking, notes }) {
+function demoEntry({ id, name, phone, email, service, date, earliestTime, latestTime, ranking, currentAppointmentTime, staffPreference, notes }) {
   return {
     id,
     name,
@@ -579,10 +580,11 @@ function demoEntry({ id, name, phone, email, service, date, earliestTime, latest
     email,
     service: service || DEFAULT_SERVICE,
     durationMinutes: serviceDuration(service || DEFAULT_SERVICE),
-    staffPreference: "",
+    staffPreference: staffPreference || "",
     preferredDate: date,
     earliestTime,
     latestTime,
+    currentAppointmentTime: currentAppointmentTime || "",
     notes: notes || "",
     ranking: ranking || 0,
     status: "active",
@@ -596,31 +598,44 @@ async function resetDemoData() {
   const laterDate = nextBusinessDateKey(2);
   const bookings = calendar.resetBookings([
     demoBooking({
+      id: "demo-booking-1000",
+      date,
+      utcHour: 8,
+      name: "Lena Hofmann",
+      email: "lena@example.com",
+      service: "Haare schneiden",
+      staff: "Sophie",
+      notes: "10:00 Haarschnitt.",
+    }),
+    demoBooking({
+      id: "demo-booking-1100",
+      date,
+      utcHour: 9,
+      name: "Marie Klein",
+      email: "marie@example.com",
+      service: "Haare färben",
+      staff: "Sophie",
+      notes: "11:00 Farbe.",
+    }),
+    demoBooking({
       id: "demo-booking-cancel",
       date,
-      utcHour: 13,
+      utcHour: 12,
       name: "Mia Schneider",
       email: "mia@example.com",
-      service: "Haare schneiden",
-      notes: "Demo: diesen Termin als Kundenabsage simulieren.",
+      service: "Haare färben",
+      staff: "Sophie",
+      notes: "14:00 Farbe - diesen Termin in der Demo absagen.",
     }),
     demoBooking({
-      id: "demo-booking-keep",
+      id: "demo-booking-1600",
       date,
-      utcHour: 15,
+      utcHour: 14,
       name: "Laura Becker",
       email: "laura@example.com",
-      service: "Haarstyling",
-      notes: "Bleibt im Kalender und zeigt belegte Slots.",
-    }),
-    demoBooking({
-      id: "demo-booking-later",
-      date: laterDate,
-      utcHour: 12,
-      name: "Sofia Wagner",
-      email: "sofia@example.com",
-      service: "Haare färben",
-      notes: "Zweiter Präsentationstermin.",
+      service: "Haare schneiden",
+      staff: "Sophie",
+      notes: "16:00 Haarschnitt.",
     }),
   ]);
 
@@ -630,24 +645,28 @@ async function resetDemoData() {
       name: "Anna Müller",
       phone: "+49 170 1111111",
       email: "anna@example.com",
-      service: "Haare schneiden",
+      service: "Haare färben",
       date,
-      earliestTime: "14:00",
-      latestTime: "16:30",
+      earliestTime: "13:30",
+      latestTime: "15:30",
+      currentAppointmentTime: "17:00",
+      staffPreference: "Sophie",
       ranking: 10,
-      notes: "Möchte gerne früher kommen, wenn kurzfristig etwas frei wird.",
+      notes: "Hat 17:00 geplant und möchte gerne früher kommen.",
     }),
     demoEntry({
       id: "demo-entry-ben",
       name: "Ben Fischer",
       phone: "+49 170 2222222",
       email: "ben@example.com",
-      service: "Haare schneiden",
+      service: "Haare färben",
       date,
-      earliestTime: "13:00",
+      earliestTime: "14:00",
       latestTime: "17:00",
+      currentAppointmentTime: "17:30",
+      staffPreference: "Egal",
       ranking: 3,
-      notes: "Flexibel am Nachmittag.",
+      notes: "Zweite passende Option für First-Come.",
     }),
     demoEntry({
       id: "demo-entry-clara",
@@ -655,11 +674,13 @@ async function resetDemoData() {
       phone: "+49 170 3333333",
       email: "clara@example.com",
       service: "Haarstyling",
-      date: laterDate,
+      date,
       earliestTime: "10:00",
       latestTime: "15:00",
       ranking: 1,
-      notes: "Passt bewusst nicht zum Haarschnitt-Slot.",
+      currentAppointmentTime: "18:00",
+      staffPreference: "Sophie",
+      notes: "Passt bewusst nicht, weil der Service ein anderer ist.",
     })
   );
   store.campaigns.splice(0, store.campaigns.length);

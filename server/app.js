@@ -105,7 +105,7 @@ app.delete("/api/bookings", async (req, res, next) => {
 
 app.post("/api/bookings", async (req, res, next) => {
   try {
-    const { date, start, name, email, notes, service } = req.body;
+    const { date, start, name, email, notes, service, staff } = req.body;
     if (!date || !start || !name || !email) {
       return res.status(400).json({ error: "Datum, Startzeit, Name und E-Mail sind erforderlich" });
     }
@@ -119,6 +119,7 @@ app.post("/api/bookings", async (req, res, next) => {
       email: email.trim(),
       notes,
       service,
+      staff,
     });
     res.status(201).json({ booking });
   } catch (err) {

@@ -2,6 +2,7 @@
   "use strict";
 
   const DEFAULT_SERVICE = "Haare schneiden";
+  const DEFAULT_STAFF = "Sophie";
   const SLOT_MINUTES = 60;
   const BUSINESS_START = 9;
   const BUSINESS_END = 17;
@@ -9,6 +10,7 @@
   const state = {
     step: 1,
     service: DEFAULT_SERVICE,
+    staff: DEFAULT_STAFF,
     date: null,
     slot: null,
     offlineMode: false,
@@ -214,6 +216,7 @@
     el.innerHTML = `
       <dl>
         <dt>Service</dt><dd>${state.service}</dd>
+        <dt>Mitarbeiter</dt><dd>${state.staff}</dd>
         <dt>Datum</dt><dd>${formatDateLabel(state.date)}</dd>
         <dt>Uhrzeit</dt><dd>${state.slot.label}</dd>
       </dl>
@@ -236,6 +239,7 @@
       email: String(fd.get("email")).trim(),
       notes: fd.get("notes"),
       service: state.service,
+      staff: state.staff,
     };
 
     btn.disabled = true;
@@ -256,8 +260,8 @@
       }
 
       const msg = state.offlineMode
-        ? `${state.service} am ${formatDateLabel(state.date)} um ${state.slot.label}. Auf diesem Gerät gespeichert (Demo).`
-        : `${state.service} am ${formatDateLabel(state.date)} um ${state.slot.label}. Bestätigung an ${payload.email} gesendet.`;
+        ? `${state.service} bei ${state.staff} am ${formatDateLabel(state.date)} um ${state.slot.label}. Auf diesem Gerät gespeichert (Demo).`
+        : `${state.service} bei ${state.staff} am ${formatDateLabel(state.date)} um ${state.slot.label}. Bestätigung an ${payload.email} gesendet.`;
 
       $("#success-message").textContent = msg;
       showStep("success");
@@ -271,6 +275,7 @@
 
   function resetBooking() {
     state.service = DEFAULT_SERVICE;
+    state.staff = DEFAULT_STAFF;
     state.date = null;
     state.slot = null;
     state.offlineMode = false;
@@ -281,6 +286,9 @@
     $("#time-next").disabled = true;
     $$(".service-btn").forEach((b) => {
       b.classList.toggle("selected", b.dataset.service === DEFAULT_SERVICE);
+    });
+    $$(".staff-btn").forEach((b) => {
+      b.classList.toggle("selected", b.dataset.staff === DEFAULT_STAFF);
     });
     $("#details-form").reset();
     showStep(1);
@@ -317,8 +325,22 @@
     });
   }
 
+  function setupStaff() {
+    $$(".staff-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        $$(".staff-btn").forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        state.staff = btn.dataset.staff;
+      });
+    });
+  }
+
   const ADMIN_USER_STORAGE = "booking_admin_user";
   const ADMIN_STORAGE = "booking_admin_key";
+  const adminState = {
+    bookings: [],
+    waitlist: { entries: [], offers: [], notifications: [] },
+  };
 
   function escapeHtml(text) {
     const d = document.createElement("div");
@@ -380,6 +402,114 @@
     return parts.length ? parts.join(" · ") : "Flexibel";
   }
 
+  function demoBookingForSlot(bookings, slotKey) {
+    const ids = {
+      "10:00": "demo-booking-1000",
+      "11:00": "demo-booking-1100",
+      "14:00": "demo-booking-cancel",
+      "16:00": "demo-booking-1600",
+    };
+    if (slotKey === "14:00") {
+      return bookings.find((booking) => booking.waitlistEntryId) ||
+        bookings.find((booking) => booking.id === ids[slotKey]);
+    }
+    return bookings.find((booking) => booking.id === ids[slotKey]);
+  }
+
+  function renderDemoDashboard() {
+    const container = $("#demo-dashboard");
+    if (!container) return;
+
+    const bookings = adminState.bookings || [];
+    const waitlist = adminState.waitlist || {};
+    const entries = waitlist.entries || [];
+    const offers = waitlist.offers || [];
+    const notifications = waitlist.notifications || waitlist.messages || [];
+    const cancelledBooking = bookings.find((booking) => booking.id === "demo-booking-cancel");
+    const rescuedBooking = bookings.find((booking) => booking.waitlistEntryId);
+    const anna = entries.find((entry) => entry.id === "demo-entry-anna") || entries.find((entry) => entry.name?.includes("Anna"));
+    const annaOffer = offers.find((offer) => offer.entryId === anna?.id);
+    const annaNotification = notifications.find((notification) => notification.entryId === anna?.id);
+    const slot14Empty = !cancelledBooking && !rescuedBooking;
+    const slot14Saved = !!rescuedBooking;
+
+    const slotRows = [
+      { time: "10:00", label: "Haarschnitt", booking: demoBookingForSlot(bookings, "10:00") },
+      { time: "11:00", label: "Farbe", booking: demoBookingForSlot(bookings, "11:00") },
+      { time: "14:00", label: "Farbe", booking: demoBookingForSlot(bookings, "14:00"), rescueSlot: true },
+      { time: "15:00", label: "frei", booking: null },
+      { time: "16:00", label: "Haarschnitt", booking: demoBookingForSlot(bookings, "16:00") },
+    ];
+
+    const calendarHtml = slotRows.map((slot) => {
+      const isEmptyRescue = slot.rescueSlot && slot14Empty;
+      const isSaved = slot.rescueSlot && slot14Saved;
+      const status = isSaved ? "saved" : isEmptyRescue ? "loss" : slot.booking ? "booked" : "free";
+      const title = isSaved
+        ? `${slot.label} - ${rescuedBooking.name}`
+        : isEmptyRescue
+          ? "Leerstand nach Absage"
+          : slot.booking
+            ? `${slot.label} - ${slot.booking.name}`
+            : "Freier Puffer";
+      const action = slot.rescueSlot && cancelledBooking
+        ? `<button type="button" class="btn primary small delete-booking-btn" data-id="${encodeURIComponent(cancelledBooking.id)}" data-source="${escapeHtml(cancelledBooking.source || "server")}">Termin absagen</button>`
+        : "";
+      return `<div class="calendar-slot ${status}">
+        <div class="slot-time">${slot.time}</div>
+        <div>
+          <strong>${escapeHtml(title)}</strong>
+          <p>${status === "loss" ? "Problem: Umsatzverlust" : status === "saved" ? "Gerettet durch Warteliste" : escapeHtml(slot.booking?.staff || "Sophie")}</p>
+        </div>
+        ${action}
+      </div>`;
+    }).join("");
+
+    const systemStatus = slot14Saved
+      ? "Slot geschlossen: Anna hat übernommen."
+      : annaOffer
+        ? "Beste Übereinstimmung gefunden: Anna kann vorgezogen werden."
+        : slot14Empty
+          ? "System wartet auf Kundenreaktion."
+          : "Bereit: Absage bei 14:00 starten.";
+
+    container.innerHTML = `
+      <div class="impact-grid">
+        <div class="impact-card danger">
+          <span>Vorher</span>
+          <strong>14:00 ${slot14Empty ? "leer" : "gefährdet"}</strong>
+          <p>Ein leerer Farbschnitt-Slot bedeutet direkten Umsatzverlust.</p>
+        </div>
+        <div class="impact-card success">
+          <span>Nachher</span>
+          <strong>14:00 ${slot14Saved ? "Termin gerettet" : "Warteliste bereit"}</strong>
+          <p>${slot14Saved ? "Der Kalender ist wieder gefüllt." : "Das System sucht automatisch den besten Ersatz."}</p>
+        </div>
+      </div>
+
+      <div class="demo-columns">
+        <div>
+          <h3>Salon-Kalender</h3>
+          <div class="calendar-demo">${calendarHtml}</div>
+        </div>
+        <div>
+          <h3>Automatisches Planungssystem</h3>
+          <div class="system-panel">
+            <div class="system-line ok"><span></span>Service passt: Farbe</div>
+            <div class="system-line ok"><span></span>Dauer passt: 60 Minuten</div>
+            <div class="system-line ok"><span></span>Mitarbeiter verfügbar: Sophie</div>
+            <div class="system-line ok"><span></span>Kunde möchte früher kommen: Anna, 17:00 → 14:00</div>
+            <div class="match-result">
+              <span>Matching-Ergebnis</span>
+              <strong>${escapeHtml(systemStatus)}</strong>
+              <p>${annaNotification ? "Mock-WhatsApp wurde in der Demo-Inbox erstellt." : "Klicke auf „Termin absagen“, um die Automation live zu zeigen."}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   function getLocalBookings() {
     try {
       const local = JSON.parse(localStorage.getItem("bookings") || "[]");
@@ -428,6 +558,7 @@
         <td>${formatBookingDate(b.start)}</td>
         <td>${formatBookingTime(b.start)}</td>
         <td>${escapeHtml(b.service || "—")}</td>
+        <td>${escapeHtml(b.staff || "—")}</td>
         <td>${escapeHtml(b.name || "—")}</td>
         <td>${escapeHtml(b.email || "—")}</td>
         <td>${escapeHtml(b.notes || "—")}</td>
@@ -437,7 +568,7 @@
       .join("");
 
     container.innerHTML = `<div class="table-wrap"><table class="bookings-table">
-        <thead><tr><th>Datum</th><th>Uhrzeit</th><th>Service</th><th>Kunde</th><th>E-Mail</th><th>Notizen</th><th>Aktion</th></tr></thead>
+        <thead><tr><th>Datum</th><th>Uhrzeit</th><th>Service</th><th>Mitarbeiter</th><th>Kunde</th><th>E-Mail</th><th>Notizen</th><th>Aktion</th></tr></thead>
         <tbody>${rows}</tbody></table></div>`;
   }
 
@@ -547,13 +678,17 @@
       }
       if (!res.ok) throw new Error(data.error || "Termine konnten nicht geladen werden");
       const bookings = mergeBookings(data.bookings || [], getLocalBookings());
+      adminState.bookings = bookings;
       renderAdminBookings(bookings);
+      renderDemoDashboard();
       setAdminStatus("", "");
       return true;
     } catch (err) {
       const local = getLocalBookings();
       if (local.length) {
+        adminState.bookings = local;
         renderAdminBookings(local);
+        renderDemoDashboard();
         setAdminStatus(
           "API nicht verfügbar — zeige in diesem Browser gespeicherte Termine.",
           "error"
@@ -584,7 +719,9 @@
         return false;
       }
       if (!res.ok) throw new Error(data.error || "Warteliste konnte nicht geladen werden");
+      adminState.waitlist = data;
       renderWaitlist(data);
+      renderDemoDashboard();
       return true;
     } catch (err) {
       container.innerHTML = `<p class="empty">${escapeHtml(err.message)}</p>`;
@@ -595,6 +732,32 @@
   async function refreshAdminDemo() {
     await loadAdminBookings();
     await loadWaitlist();
+  }
+
+  async function resetDemoData({ confirmFirst = true } = {}) {
+    if (confirmFirst && !window.confirm("Demo zurücksetzen und Beispieldaten neu laden?")) return false;
+
+    const user = sessionStorage.getItem(ADMIN_USER_STORAGE) || "";
+    const key = sessionStorage.getItem(ADMIN_STORAGE) || "";
+    localStorage.removeItem("bookings");
+    const params = new URLSearchParams({ user, key });
+    const { res, data } = await apiFetch(`/api/demo-reset?${params.toString()}`, {
+      method: "POST",
+    });
+    if (!res.ok) throw new Error(data.error || "Demo-Reset fehlgeschlagen");
+    await refreshAdminDemo();
+    return true;
+  }
+
+  async function ensureDemoDataLoaded() {
+    const hasDemoData = adminState.bookings.length || (adminState.waitlist.entries || []).length;
+    if (hasDemoData) return;
+    try {
+      await resetDemoData({ confirmFirst: false });
+      setAdminStatus("Demo-Daten automatisch geladen: Kalender und Warteliste sind bereit.", "ok");
+    } catch {
+      // If the API is unavailable, the existing fallback/error UI remains visible.
+    }
   }
 
   async function handleWaitlistSubmit(e) {
@@ -670,31 +833,30 @@
   }
 
   async function handleDemoReset() {
-    if (!window.confirm("Demo zurücksetzen und Beispieldaten neu laden?")) return;
-
     const btn = $("#demo-reset-btn");
-    const user = sessionStorage.getItem(ADMIN_USER_STORAGE) || "";
-    const key = sessionStorage.getItem(ADMIN_STORAGE) || "";
+    const heroBtn = $("#demo-reset-hero-btn");
     if (btn) {
       btn.disabled = true;
       btn.textContent = "Wird zurückgesetzt…";
     }
+    if (heroBtn) {
+      heroBtn.disabled = true;
+      heroBtn.textContent = "Wird geladen…";
+    }
 
     try {
-      localStorage.removeItem("bookings");
-      const params = new URLSearchParams({ user, key });
-      const { res, data } = await apiFetch(`/api/demo-reset?${params.toString()}`, {
-        method: "POST",
-      });
-      if (!res.ok) throw new Error(data.error || "Demo-Reset fehlgeschlagen");
-      await refreshAdminDemo();
-      setAdminStatus("Demo zurückgesetzt: Beispieltermine und Warteliste sind bereit.", "ok");
+      const didReset = await resetDemoData({ confirmFirst: true });
+      if (didReset) setAdminStatus("Demo zurückgesetzt: Beispieltermine und Warteliste sind bereit.", "ok");
     } catch (err) {
       showError(err.message || "Demo-Reset fehlgeschlagen");
     } finally {
       if (btn) {
         btn.disabled = false;
         btn.textContent = "Demo zurücksetzen";
+      }
+      if (heroBtn) {
+        heroBtn.disabled = false;
+        heroBtn.textContent = "Demo-Daten laden";
       }
     }
   }
@@ -747,21 +909,25 @@
 
   function showAdminLogin() {
     const login = $("#login-card");
+    const story = $("#demo-story-card");
     const list = $("#list-card");
     const waitlist = $("#waitlist-card");
     if (login) login.hidden = false;
+    if (story) story.hidden = true;
     if (list) list.hidden = true;
     if (waitlist) waitlist.hidden = true;
   }
 
   function showAdminList() {
     const login = $("#login-card");
+    const story = $("#demo-story-card");
     const list = $("#list-card");
     const waitlist = $("#waitlist-card");
     if (login) login.hidden = true;
+    if (story) story.hidden = false;
     if (list) list.hidden = false;
     if (waitlist) waitlist.hidden = false;
-    list?.scrollIntoView({ behavior: "smooth", block: "start" });
+    story?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function handleAdminLogin() {
@@ -789,6 +955,7 @@
 
     const ok = await loadAdminBookings();
     await loadWaitlist();
+    await ensureDemoDataLoaded();
 
     if (btn) {
       btn.disabled = false;
@@ -805,8 +972,7 @@
     if (managerReady) {
       if (sessionStorage.getItem(ADMIN_USER_STORAGE) && sessionStorage.getItem(ADMIN_STORAGE)) {
         showAdminList();
-        loadAdminBookings();
-        loadWaitlist();
+        refreshAdminDemo().then(ensureDemoDataLoaded);
       } else {
         showAdminLogin();
       }
@@ -826,8 +992,10 @@
     });
     $("#refresh-waitlist-btn")?.addEventListener("click", loadWaitlist);
     $("#demo-reset-btn")?.addEventListener("click", handleDemoReset);
+    $("#demo-reset-hero-btn")?.addEventListener("click", handleDemoReset);
     $("#waitlist-form")?.addEventListener("submit", handleWaitlistSubmit);
     $("#bookings-container")?.addEventListener("click", handleDeleteBooking);
+    $("#demo-dashboard")?.addEventListener("click", handleDeleteBooking);
     $("#waitlist-container")?.addEventListener("click", handleNotificationAction);
     $("#logout-btn")?.addEventListener("click", () => {
       sessionStorage.removeItem(ADMIN_USER_STORAGE);
@@ -840,8 +1008,7 @@
 
     if (sessionStorage.getItem(ADMIN_USER_STORAGE) && sessionStorage.getItem(ADMIN_STORAGE)) {
       showAdminList();
-      loadAdminBookings();
-      loadWaitlist();
+      refreshAdminDemo().then(ensureDemoDataLoaded);
     } else {
       showAdminLogin();
     }
@@ -973,6 +1140,7 @@
       initDateInput();
       setupNavigation();
       setupServices();
+      setupStaff();
 
       const form = $("#details-form");
       if (form) form.addEventListener("submit", submitBooking);

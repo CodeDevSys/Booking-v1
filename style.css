@@ -172,7 +172,8 @@ body {
   margin-bottom: 1.25rem;
 }
 
-.service-btn {
+.service-btn,
+.staff-btn {
   padding: 0.85rem 1rem;
   text-align: left;
   font: inherit;
@@ -185,11 +186,13 @@ body {
   transition: border-color 0.15s, background 0.15s;
 }
 
-.service-btn:hover {
+.service-btn:hover,
+.staff-btn:hover {
   border-color: var(--muted);
 }
 
-.service-btn.selected {
+.service-btn.selected,
+.staff-btn.selected {
   border-color: var(--accent);
   background: var(--accent-glow);
 }
@@ -388,6 +391,11 @@ body {
   font-size: 0.8rem;
 }
 
+.btn.big {
+  padding: 0.9rem 1.35rem;
+  font-size: 1rem;
+}
+
 .next-btn {
   width: 100%;
   margin-top: 0.5rem;
@@ -453,6 +461,214 @@ body {
 
 .demo-flow strong {
   color: var(--accent);
+}
+
+.demo-story-card {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.demo-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.eyebrow {
+  margin: 0 0 0.3rem;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.demo-hero h2 {
+  margin: 0;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+}
+
+.role-grid,
+.impact-grid,
+.demo-columns {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.role-grid {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.role-card,
+.impact-card,
+.system-panel {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.role-card span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 0.65rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 800;
+}
+
+.role-card strong,
+.impact-card strong {
+  display: block;
+  font-size: 1.05rem;
+}
+
+.role-card p,
+.impact-card p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.impact-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.impact-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.impact-card.danger {
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.impact-card.success {
+  border-color: rgba(110, 231, 183, 0.35);
+}
+
+.demo-columns {
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  margin-top: 1rem;
+}
+
+.demo-columns h3 {
+  margin: 0 0 0.75rem;
+}
+
+.calendar-demo {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.calendar-slot {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.8rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.calendar-slot p {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.slot-time {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.calendar-slot.free {
+  opacity: 0.75;
+}
+
+.calendar-slot.loss {
+  border-color: rgba(248, 113, 113, 0.65);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.calendar-slot.saved {
+  border-color: rgba(110, 231, 183, 0.65);
+  background: var(--accent-glow);
+}
+
+.system-panel {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.system-line {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.system-line span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-glow);
+}
+
+.match-result {
+  margin-top: 0.3rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+.match-result span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.match-result strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--accent);
+}
+
+.match-result p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 760px) {
+  .demo-hero {
+    flex-direction: column;
+  }
+
+  .demo-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-slot {
+    grid-template-columns: 56px 1fr;
+  }
+
+  .calendar-slot .btn {
+    grid-column: 1 / -1;
+  }
 }
 
 .bookings-table {

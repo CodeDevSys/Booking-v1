@@ -87,7 +87,7 @@ module.exports = async function handler(req, res) {
     const body = getBody(req);
     if (!body) return res.status(400).json({ error: "Ungültiger JSON-Body" });
 
-    const { date, start, name, email, notes, service } = body;
+    const { date, start, name, email, notes, service, staff } = body;
     if (!date || !start || !name || !email) {
       return res.status(400).json({ error: "Datum, Startzeit, Name und E-Mail sind erforderlich" });
     }
@@ -102,6 +102,7 @@ module.exports = async function handler(req, res) {
       email: email.trim(),
       notes,
       service,
+      staff,
     });
     return res.status(201).json({ booking });
   } catch (err) {
