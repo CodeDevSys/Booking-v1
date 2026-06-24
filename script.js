@@ -427,6 +427,17 @@
     return { bookings, waitlist };
   }
 
+  function hasCurrentLocalDemoData() {
+    const bookings = getLocalBookings();
+    const waitlist = getLocalWaitlist();
+    return bookings.some((booking) =>
+      booking.id === "demo-booking-cancel" &&
+      booking.name === "Maria" &&
+      booking.service === "Farbe" &&
+      booking.status === "cancelled"
+    ) && waitlist.entries.some((entry) => entry.id === "demo-entry-sophie");
+  }
+
   function escapeHtml(text) {
     const d = document.createElement("div");
     d.textContent = String(text);
@@ -940,7 +951,7 @@
             </article>`;
           })
           .join("")}</div>`
-      : '<p class="empty">Noch keine Demo-Notifications. Simuliere eine Absage, um hier die WhatsApp-ähnliche Nachricht zu sehen.</p>';
+      : '<p class="empty">Die Demo-Automatik läuft. Die Kunden-Nachricht erscheint gleich automatisch.</p>';
 
     container.innerHTML = `
       <div class="waitlist-section">
@@ -1059,30 +1070,20 @@
   async function resetDemoData({ confirmFirst = true } = {}) {
     if (confirmFirst && !window.confirm("Demo zurücksetzen und Beispieldaten neu laden?")) return false;
 
-    const user = sessionStorage.getItem(ADMIN_USER_STORAGE) || "";
-    const key = sessionStorage.getItem(ADMIN_STORAGE) || "";
-    localStorage.removeItem("bookings");
-    const params = new URLSearchParams({ user, key });
-    const { res, data } = await apiFetch(`/api/demo-reset?${params.toString()}`, {
-      method: "POST",
-    });
-    if (!res.ok) throw new Error(data.error || "Demo-Reset fehlgeschlagen");
+    clearSchedulerTimers();
+    seedLocalDemoData();
     await refreshAdminDemo();
+    startLocalSchedulerDemoIfNeeded();
     return true;
   }
 
   async function ensureDemoDataLoaded() {
-    const hasDemoData = adminState.bookings.length || (adminState.waitlist.entries || []).length;
-    if (hasDemoData) return;
-    try {
+    if (!hasCurrentLocalDemoData()) {
       await resetDemoData({ confirmFirst: false });
-      setAdminStatus("Demo-Daten automatisch geladen: Kalender und Warteliste sind bereit.", "ok");
-    } catch {
-      seedLocalDemoData();
-      await refreshAdminDemo();
-      startLocalSchedulerDemoIfNeeded();
-      setAdminStatus("GitHub-Pages-Demo geladen: Alles läuft lokal im Browser.", "ok");
+      setAdminStatus("Demo-Daten geladen: Smart Scheduler startet automatisch.", "ok");
+      return;
     }
+    startLocalSchedulerDemoIfNeeded();
   }
 
   async function handleWaitlistSubmit(e) {
@@ -1176,12 +1177,9 @@
 
     try {
       const didReset = await resetDemoData({ confirmFirst: true });
-      if (didReset) setAdminStatus("Demo zurückgesetzt: Beispieltermine und Warteliste sind bereit.", "ok");
+      if (didReset) setAdminStatus("Demo zurückgesetzt: Smart Scheduler startet automatisch.", "ok");
     } catch (err) {
-      seedLocalDemoData();
-      await refreshAdminDemo();
-      startLocalSchedulerDemoIfNeeded();
-      setAdminStatus("GitHub-Pages-Demo zurückgesetzt: lokale Beispieldaten sind bereit.", "ok");
+      showError(err.message || "Demo-Reset fehlgeschlagen");
     } finally {
       if (btn) {
         btn.disabled = false;
