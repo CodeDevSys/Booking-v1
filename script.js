@@ -414,14 +414,22 @@
     };
   }
 
+  function isDemoBooking(booking) {
+    const id = String(booking?.id || "");
+    return id.startsWith("demo-") || id.startsWith("local-rescue-") || booking?.waitlistEntryId;
+  }
+
   function seedLocalDemoData() {
     const date = nextBusinessDateKey(1);
-    const bookings = [
+    const existingCustomerBookings = getLocalBookings().filter((booking) => !isDemoBooking(booking));
+    const demoBookings = [
       localDemoBooking({ id: "demo-booking-0900", date, hour: 9, name: "Anna", email: "anna.termin@example.com", service: "Haarschnitt", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
       localDemoBooking({ id: "demo-booking-1100", date, hour: 11, name: "Lisa", email: "lisa@example.com", service: "Farbe", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
       localDemoBooking({ id: "demo-booking-cancel", date, hour: 14, name: "Maria", email: "maria@example.com", service: "Farbe", staff: "Sophie", status: "cancelled", notes: "Kunde hat abgesagt - freier Slot erkannt." }),
       localDemoBooking({ id: "demo-booking-1600", date, hour: 16, name: "Thomas", email: "thomas@example.com", service: "Styling", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
     ];
+    const bookings = [...existingCustomerBookings, ...demoBookings]
+      .sort((a, b) => new Date(a.start || 0).getTime() - new Date(b.start || 0).getTime());
     const waitlist = {
       entries: [
         localDemoEntry({ id: "demo-entry-sophie", name: "Sophie", phone: "+49 170 1111111", email: "sophie@example.com", service: "Farbe", date, earliestTime: "13:30", latestTime: "15:00", ranking: 10, currentAppointmentTime: "17:00", staffPreference: "Sophie", notes: "Passt perfekt zum freigewordenen Farbtermin." }),
