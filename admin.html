@@ -41,8 +41,13 @@
     <section class="card" id="list-card" hidden>
       <div class="admin-toolbar">
         <button type="button" class="btn primary small" id="refresh-btn">Aktualisieren</button>
+        <button type="button" class="btn ghost small" id="demo-reset-btn">Demo zurücksetzen</button>
         <button type="button" class="btn ghost small" id="logout-btn">Abmelden</button>
         <span class="hint" id="count-label"></span>
+      </div>
+      <div class="demo-flow">
+        <strong>Demo-Flow:</strong>
+        Kunde bucht → Termin erscheint hier → „Absage simulieren“ → Warteliste matched automatisch → Mock-WhatsApp erscheint unten → Kunde übernimmt mit einem Klick.
       </div>
       <div id="bookings-container"><p class="loading">Wird geladen…</p></div>
     </section>
@@ -51,7 +56,7 @@
       <div class="admin-toolbar">
         <div>
           <h2>Automatisierte Warteliste</h2>
-          <p class="hint">Bei einer Terminabsage werden passende Kunden automatisch per SMS-Link benachrichtigt.</p>
+          <p class="hint">Bei einer Terminabsage werden passende Kunden automatisch gematcht und in der Demo-Inbox benachrichtigt.</p>
         </div>
         <button type="button" class="btn ghost small" id="refresh-waitlist-btn">Warteliste aktualisieren</button>
       </div>
@@ -63,7 +68,7 @@
             <input type="text" name="name" required autocomplete="name" placeholder="Max Mustermann" />
           </label>
           <label>
-            Telefon für SMS
+            Telefon / WhatsApp-Demo
             <input type="tel" name="phone" required autocomplete="tel" placeholder="+49 170 1234567" />
           </label>
           <label>

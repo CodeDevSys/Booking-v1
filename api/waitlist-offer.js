@@ -45,7 +45,10 @@ module.exports = async function handler(req, res) {
       if (!body) return res.status(400).json({ error: "Ungültiger JSON-Body" });
       const token = body.token || req.query?.token;
       if (!token) return res.status(400).json({ error: "Angebots-Token erforderlich" });
-      const result = await waitlist.claimOffer(token);
+      const action = body.action || req.query?.action || "accept";
+      const result = action === "decline"
+        ? await waitlist.declineOffer(token, { baseUrl: requestBaseUrl(req) })
+        : await waitlist.claimOffer(token);
       return res.status(201).json(result);
     }
 

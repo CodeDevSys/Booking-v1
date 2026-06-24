@@ -161,12 +161,28 @@ app.post("/api/waitlist-offer", async (req, res, next) => {
   try {
     const token = req.body?.token || req.query.token;
     if (!token) return res.status(400).json({ error: "Angebots-Token erforderlich" });
-    const result = await waitlist.claimOffer(token);
+    const action = req.body?.action || req.query.action || "accept";
+    const result = action === "decline"
+      ? await waitlist.declineOffer(token, { baseUrl: requestBaseUrl(req) })
+      : await waitlist.claimOffer(token);
     res.status(201).json(result);
   } catch (err) {
     next(err);
   }
 });
+
+async function handleDemoReset(req, res, next) {
+  try {
+    if (!checkAdmin(req, res)) return;
+    const data = await waitlist.resetDemoData();
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+}
+
+app.post("/api/demo/reset", handleDemoReset);
+app.post("/api/demo-reset", handleDemoReset);
 
 app.post("/api/chat", async (req, res, next) => {
   try {

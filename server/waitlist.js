@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { randomUUID } = require("crypto");
 const calendar = require("./calendar");
+const notificationService = require("./notification-service");
 
 const DATA_DIR = process.env.BOOKINGS_DATA_DIR || path.join(__dirname, "..", "data");
 const WAITLIST_FILE = path.join(DATA_DIR, "waitlist.json");
@@ -187,6 +188,7 @@ async function listWaitlist(options = {}) {
     offers: [...store.offers].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     campaigns: [...store.campaigns].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     messages: [...store.messages].slice(-50).reverse(),
+    notifications: [...store.messages].slice(-50).reverse(),
   };
 }
 
@@ -263,45 +265,36 @@ function claimDeadline(strategy) {
   return new Date(Date.now() + 24 * 60 * 60000).toISOString();
 }
 
-async function sendWaitlistMessage(entry, offer, options = {}) {
+function notificationBody(entry, offer, url) {
+  return [
+    `Hallo ${entry.name} 👋`,
+    "",
+    "ein Termin ist kurzfristig frei geworden:",
+    `${offer.slot.service} am ${formatBusinessDate(offer.slot.start)} um ${formatBusinessTime(offer.slot.start)}.`,
+    "",
+    "Möchtest du den Termin übernehmen?",
+    url ? `Demo-Link: ${url}` : "",
+  ].filter((line) => line !== "").join("\n");
+}
+
+async function createMockNotification(entry, offer, options = {}) {
   const url = publicOfferUrl(offer.token, options.baseUrl);
-  const message = `Kurzfristig frei: ${offer.slot.service} am ${formatBusinessDate(offer.slot.start)} um ${formatBusinessTime(offer.slot.start)}. Jetzt buchen: ${url}`;
-  const record = {
-    id: randomUUID(),
-    offerId: offer.id,
-    entryId: entry.id,
-    to: entry.phone,
-    message,
-    status: "logged",
-    createdAt: new Date().toISOString(),
-  };
+  const message = notificationBody(entry, offer, url);
+  const record = notificationService.createWhatsAppDemoNotification({ entry, offer, message });
 
-  const webhookUrl = process.env.WAITLIST_SMS_WEBHOOK_URL;
-  if (webhookUrl && typeof fetch === "function") {
-    try {
-      const res = await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: entry.phone,
-          body: message,
-          entry,
-          offer: { ...offer, url },
-        }),
-      });
-      record.status = res.ok ? "sent" : "failed";
-      record.providerStatus = res.status;
-    } catch (err) {
-      record.status = "failed";
-      record.error = err.message;
-    }
-  } else {
-    console.log(`[waitlist sms] ${entry.phone}: ${message}`);
-  }
-
+  console.log(`[demo notification] ${entry.name} (${entry.phone}): ${message.replace(/\n/g, " ")}`);
   store.messages.push(record);
   saveStore();
   return record;
+}
+
+function updateNotificationsForOffer(offerId, status) {
+  for (const notification of store.messages) {
+    if (notification.offerId === offerId) {
+      notification.status = status;
+      notification.updatedAt = new Date().toISOString();
+    }
+  }
 }
 
 async function dispatchOffer(campaign, entry, options = {}) {
@@ -323,7 +316,7 @@ async function dispatchOffer(campaign, entry, options = {}) {
   campaign.nextIndex += 1;
   campaign.updatedAt = new Date().toISOString();
   saveStore();
-  await sendWaitlistMessage(entry, offer, options);
+  await createMockNotification(entry, offer, options);
   return offer;
 }
 
@@ -370,6 +363,7 @@ function markExpiredOffers(now = Date.now()) {
     if (offer.status === "pending" && new Date(offer.expiresAt).getTime() <= now) {
       offer.status = "expired";
       offer.updatedAt = new Date().toISOString();
+      updateNotificationsForOffer(offer.id, "expired");
       changed = true;
     }
   }
@@ -474,6 +468,7 @@ async function claimOffer(token) {
   if (!available) {
     offer.status = "unavailable";
     offer.updatedAt = new Date().toISOString();
+    updateNotificationsForOffer(offer.id, "unavailable");
     saveStore();
     const err = new Error("Der Termin wurde bereits vergeben");
     err.status = 409;
@@ -496,6 +491,7 @@ async function claimOffer(token) {
   offer.status = "booked";
   offer.claimedAt = new Date().toISOString();
   offer.bookingId = booking.id;
+  updateNotificationsForOffer(offer.id, "accepted");
   entry.status = "booked";
   entry.updatedAt = new Date().toISOString();
 
@@ -508,10 +504,170 @@ async function claimOffer(token) {
     if (other.campaignId === offer.campaignId && other.id !== offer.id && other.status === "pending") {
       other.status = "superseded";
       other.updatedAt = new Date().toISOString();
+      updateNotificationsForOffer(other.id, "superseded");
     }
   }
   saveStore();
   return { booking, offer: publicOffer(offer) };
+}
+
+async function declineOffer(token, options = {}) {
+  await processDueCascades(options);
+  const offer = store.offers.find((item) => item.token === token);
+  if (!offer) {
+    const err = new Error("Angebot nicht gefunden");
+    err.status = 404;
+    throw err;
+  }
+  if (offer.status !== "pending") {
+    const err = new Error("Dieses Angebot ist nicht mehr verfügbar");
+    err.status = 409;
+    throw err;
+  }
+
+  offer.status = "declined";
+  offer.updatedAt = new Date().toISOString();
+  updateNotificationsForOffer(offer.id, "declined");
+  saveStore();
+
+  const campaign = store.campaigns.find((item) => item.id === offer.campaignId);
+  if (campaign?.strategy === CASCADE) {
+    await advanceCascade(campaign, options);
+  }
+
+  return { offer: publicOffer(offer) };
+}
+
+function nextBusinessDateKey(daysAhead = 1) {
+  const date = new Date();
+  date.setUTCHours(0, 0, 0, 0);
+  date.setUTCDate(date.getUTCDate() + daysAhead);
+  while (date.getUTCDay() === 0 || date.getUTCDay() === 6) {
+    date.setUTCDate(date.getUTCDate() + 1);
+  }
+  return date.toISOString().slice(0, 10);
+}
+
+function demoIso(dateKey, utcHour) {
+  return new Date(`${dateKey}T${String(utcHour).padStart(2, "0")}:00:00.000Z`).toISOString();
+}
+
+function demoBooking({ id, date, utcHour, name, email, service, notes }) {
+  const start = demoIso(date, utcHour);
+  return {
+    id,
+    date,
+    start,
+    end: new Date(new Date(start).getTime() + DEFAULT_DURATION_MINUTES * 60000).toISOString(),
+    name,
+    email,
+    phone: "",
+    notes: notes || "",
+    service: service || DEFAULT_SERVICE,
+    durationMinutes: DEFAULT_DURATION_MINUTES,
+    staff: "",
+    waitlistEntryId: "",
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function demoEntry({ id, name, phone, email, service, date, earliestTime, latestTime, ranking, notes }) {
+  return {
+    id,
+    name,
+    phone,
+    email,
+    service: service || DEFAULT_SERVICE,
+    durationMinutes: serviceDuration(service || DEFAULT_SERVICE),
+    staffPreference: "",
+    preferredDate: date,
+    earliestTime,
+    latestTime,
+    notes: notes || "",
+    ranking: ranking || 0,
+    status: "active",
+    createdAt: new Date(Date.now() - (ranking || 0) * 60000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+async function resetDemoData() {
+  const date = nextBusinessDateKey(1);
+  const laterDate = nextBusinessDateKey(2);
+  const bookings = calendar.resetBookings([
+    demoBooking({
+      id: "demo-booking-cancel",
+      date,
+      utcHour: 13,
+      name: "Mia Schneider",
+      email: "mia@example.com",
+      service: "Haare schneiden",
+      notes: "Demo: diesen Termin als Kundenabsage simulieren.",
+    }),
+    demoBooking({
+      id: "demo-booking-keep",
+      date,
+      utcHour: 15,
+      name: "Laura Becker",
+      email: "laura@example.com",
+      service: "Haarstyling",
+      notes: "Bleibt im Kalender und zeigt belegte Slots.",
+    }),
+    demoBooking({
+      id: "demo-booking-later",
+      date: laterDate,
+      utcHour: 12,
+      name: "Sofia Wagner",
+      email: "sofia@example.com",
+      service: "Haare färben",
+      notes: "Zweiter Präsentationstermin.",
+    }),
+  ]);
+
+  store.entries.splice(0, store.entries.length,
+    demoEntry({
+      id: "demo-entry-anna",
+      name: "Anna Müller",
+      phone: "+49 170 1111111",
+      email: "anna@example.com",
+      service: "Haare schneiden",
+      date,
+      earliestTime: "14:00",
+      latestTime: "16:30",
+      ranking: 10,
+      notes: "Möchte gerne früher kommen, wenn kurzfristig etwas frei wird.",
+    }),
+    demoEntry({
+      id: "demo-entry-ben",
+      name: "Ben Fischer",
+      phone: "+49 170 2222222",
+      email: "ben@example.com",
+      service: "Haare schneiden",
+      date,
+      earliestTime: "13:00",
+      latestTime: "17:00",
+      ranking: 3,
+      notes: "Flexibel am Nachmittag.",
+    }),
+    demoEntry({
+      id: "demo-entry-clara",
+      name: "Clara Neumann",
+      phone: "+49 170 3333333",
+      email: "clara@example.com",
+      service: "Haarstyling",
+      date: laterDate,
+      earliestTime: "10:00",
+      latestTime: "15:00",
+      ranking: 1,
+      notes: "Passt bewusst nicht zum Haarschnitt-Slot.",
+    })
+  );
+  store.campaigns.splice(0, store.campaigns.length);
+  store.offers.splice(0, store.offers.length);
+  store.messages.splice(0, store.messages.length);
+  saveStore();
+
+  return { bookings, waitlist: await listWaitlist() };
 }
 
 module.exports = {
@@ -520,6 +676,8 @@ module.exports = {
   createOffersForCancellation,
   getOfferByToken,
   claimOffer,
+  declineOffer,
   advanceCascade,
+  resetDemoData,
   _store: store,
 };

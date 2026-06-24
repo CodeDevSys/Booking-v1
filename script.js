@@ -358,6 +358,9 @@
       expired: "Abgelaufen",
       unavailable: "Vergeben",
       superseded: "Überholt",
+      delivered: "Zugestellt",
+      accepted: "Angenommen",
+      declined: "Abgelehnt",
     };
     return labels[status] || status || "—";
   }
@@ -428,7 +431,7 @@
         <td>${escapeHtml(b.name || "—")}</td>
         <td>${escapeHtml(b.email || "—")}</td>
         <td>${escapeHtml(b.notes || "—")}</td>
-        <td><button type="button" class="btn ghost small delete-booking-btn" data-id="${encodeURIComponent(String(b.id || ""))}" data-source="${escapeHtml(b.source || "server")}" ${b.id ? "" : "disabled"}>Löschen</button></td>
+        <td><button type="button" class="btn ghost small delete-booking-btn" data-id="${encodeURIComponent(String(b.id || ""))}" data-source="${escapeHtml(b.source || "server")}" ${b.id ? "" : "disabled"}>Absage simulieren</button></td>
       </tr>`
       )
       .join("");
@@ -444,7 +447,7 @@
 
     const entries = Array.isArray(data.entries) ? data.entries : [];
     const offers = Array.isArray(data.offers) ? data.offers : [];
-    const messages = Array.isArray(data.messages) ? data.messages : [];
+    const notifications = Array.isArray(data.notifications) ? data.notifications : (data.messages || []);
 
     const entriesHtml = entries.length
       ? `<div class="table-wrap"><table class="bookings-table">
@@ -481,21 +484,26 @@
         </table></div>`
       : '<p class="empty">Noch keine automatischen Angebote erzeugt.</p>';
 
-    const messagesHtml = messages.length
-      ? `<div class="table-wrap"><table class="bookings-table">
-          <thead><tr><th>Status</th><th>An</th><th>Nachricht</th></tr></thead>
-          <tbody>${messages
-            .slice(0, 10)
-            .map(
-              (message) => `<tr>
-                <td>${statusPill(message.status)}</td>
-                <td>${escapeHtml(message.to || "—")}</td>
-                <td>${escapeHtml(message.message || "—")}</td>
-              </tr>`
-            )
-            .join("")}</tbody>
-        </table></div>`
-      : '<p class="empty">Noch keine SMS-Outbox-Einträge.</p>';
+    const inboxHtml = notifications.length
+      ? `<div class="notification-list">${notifications
+          .slice(0, 10)
+          .map((notification) => {
+            const offer = offers.find((item) => item.id === notification.offerId);
+            const canAct = notification.status === "delivered" && (!offer || offer.status === "pending");
+            return `<article class="whatsapp-card">
+              <div class="whatsapp-head">
+                <span>WhatsApp-Demo an ${escapeHtml(notification.customerName || notification.to || "Kunde")}</span>
+                ${statusPill(notification.status)}
+              </div>
+              <pre>${escapeHtml(notification.message || "")}</pre>
+              <div class="whatsapp-actions">
+                <button type="button" class="btn primary small take-notification-btn" data-token="${encodeURIComponent(notification.token || "")}" ${canAct ? "" : "disabled"}>${escapeHtml(notification.actionLabel || "Termin übernehmen")}</button>
+                <button type="button" class="btn ghost small decline-notification-btn" data-token="${encodeURIComponent(notification.token || "")}" ${canAct ? "" : "disabled"}>${escapeHtml(notification.declineLabel || "Nein danke")}</button>
+              </div>
+            </article>`;
+          })
+          .join("")}</div>`
+      : '<p class="empty">Noch keine Demo-Notifications. Simuliere eine Absage, um hier die WhatsApp-ähnliche Nachricht zu sehen.</p>';
 
     container.innerHTML = `
       <div class="waitlist-section">
@@ -507,8 +515,8 @@
         ${offersHtml}
       </div>
       <div class="waitlist-section">
-        <h3>SMS-Outbox</h3>
-        ${messagesHtml}
+        <h3>Demo-Inbox: simulierte WhatsApp-Nachrichten</h3>
+        ${inboxHtml}
       </div>
     `;
   }
@@ -584,6 +592,11 @@
     }
   }
 
+  async function refreshAdminDemo() {
+    await loadAdminBookings();
+    await loadWaitlist();
+  }
+
   async function handleWaitlistSubmit(e) {
     e.preventDefault();
     const form = e.target;
@@ -622,6 +635,70 @@
     }
   }
 
+  async function handleNotificationAction(e) {
+    const takeBtn = e.target.closest(".take-notification-btn");
+    const declineBtn = e.target.closest(".decline-notification-btn");
+    const btn = takeBtn || declineBtn;
+    if (!btn) return;
+
+    const token = decodeURIComponent(btn.dataset.token || "");
+    if (!token) return;
+    const action = takeBtn ? "accept" : "decline";
+
+    btn.disabled = true;
+    btn.textContent = action === "accept" ? "Wird übernommen…" : "Wird abgelehnt…";
+
+    try {
+      const { res, data } = await apiFetch("/api/waitlist-offer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, action }),
+      });
+      if (!res.ok) throw new Error(data.error || "Demo-Aktion fehlgeschlagen");
+      await refreshAdminDemo();
+      setAdminStatus(
+        action === "accept"
+          ? "Termin übernommen: Der freie Slot ist wieder gebucht."
+          : "Kunde hat abgelehnt. Der Status wurde in der Demo-Inbox aktualisiert.",
+        "ok"
+      );
+    } catch (err) {
+      showError(err.message || "Demo-Aktion fehlgeschlagen");
+      btn.disabled = false;
+      btn.textContent = action === "accept" ? "Termin übernehmen" : "Nein danke";
+    }
+  }
+
+  async function handleDemoReset() {
+    if (!window.confirm("Demo zurücksetzen und Beispieldaten neu laden?")) return;
+
+    const btn = $("#demo-reset-btn");
+    const user = sessionStorage.getItem(ADMIN_USER_STORAGE) || "";
+    const key = sessionStorage.getItem(ADMIN_STORAGE) || "";
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Wird zurückgesetzt…";
+    }
+
+    try {
+      localStorage.removeItem("bookings");
+      const params = new URLSearchParams({ user, key });
+      const { res, data } = await apiFetch(`/api/demo-reset?${params.toString()}`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error(data.error || "Demo-Reset fehlgeschlagen");
+      await refreshAdminDemo();
+      setAdminStatus("Demo zurückgesetzt: Beispieltermine und Warteliste sind bereit.", "ok");
+    } catch (err) {
+      showError(err.message || "Demo-Reset fehlgeschlagen");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Demo zurücksetzen";
+      }
+    }
+  }
+
   function deleteLocalBooking(id) {
     const bookings = getLocalBookings().filter((booking) => String(booking.id) !== String(id));
     localStorage.setItem("bookings", JSON.stringify(bookings));
@@ -635,10 +712,10 @@
     const source = btn.dataset.source || "server";
     if (!id) return;
 
-    if (!window.confirm("Diesen Termin löschen?")) return;
+    if (!window.confirm("Kundenabsage simulieren und Warteliste automatisch prüfen?")) return;
 
     btn.disabled = true;
-    btn.textContent = "Wird gelöscht…";
+    btn.textContent = "Absage läuft…";
 
     try {
       let waitlistMessage = "";
@@ -654,16 +731,17 @@
         if (!res.ok) throw new Error(data.error || "Löschen fehlgeschlagen");
         const offerCount = data.waitlist?.offers?.length || 0;
         if (offerCount) {
-          waitlistMessage = `${offerCount} Wartelisten-Angebot${offerCount === 1 ? "" : "e"} per SMS vorbereitet.`;
+          waitlistMessage = `${offerCount} passende Demo-Notification${offerCount === 1 ? "" : "s"} erzeugt.`;
+        } else {
+          waitlistMessage = "Absage verarbeitet. Kein passender Wartelistenkunde gefunden.";
         }
       }
-      await loadAdminBookings();
-      await loadWaitlist();
+      await refreshAdminDemo();
       if (waitlistMessage) setAdminStatus(waitlistMessage, "ok");
     } catch (err) {
       showError(err.message || "Löschen fehlgeschlagen");
       btn.disabled = false;
-      btn.textContent = "Löschen";
+      btn.textContent = "Absage simulieren";
     }
   }
 
@@ -744,12 +822,13 @@
     $("#admin-login-btn")?.addEventListener("click", handleAdminLogin);
 
     $("#refresh-btn")?.addEventListener("click", async () => {
-      await loadAdminBookings();
-      await loadWaitlist();
+      await refreshAdminDemo();
     });
     $("#refresh-waitlist-btn")?.addEventListener("click", loadWaitlist);
+    $("#demo-reset-btn")?.addEventListener("click", handleDemoReset);
     $("#waitlist-form")?.addEventListener("submit", handleWaitlistSubmit);
     $("#bookings-container")?.addEventListener("click", handleDeleteBooking);
+    $("#waitlist-container")?.addEventListener("click", handleNotificationAction);
     $("#logout-btn")?.addEventListener("click", () => {
       sessionStorage.removeItem(ADMIN_USER_STORAGE);
       sessionStorage.removeItem(ADMIN_STORAGE);
@@ -802,17 +881,21 @@
         <p>${escapeHtml(formatDateTime(offer.slot?.start))}</p>
         <p>${escapeHtml(offer.durationMinutes || "")} Minuten</p>
       </div>
-      <p class="claim-note">Der Link ist bis ${escapeHtml(formatDateTime(offer.expiresAt))} gültig. Sobald jemand bestätigt, ist der Slot vergeben.</p>
-      <button type="button" class="btn primary" id="claim-offer-btn">Termin verbindlich buchen</button>
+      <p class="claim-note">Diese Demo-Notification ist bis ${escapeHtml(formatDateTime(offer.expiresAt))} gültig. Sobald jemand bestätigt, ist der Slot vergeben.</p>
+      <div class="nav-row">
+        <button type="button" class="btn ghost" id="decline-offer-btn">Nein danke</button>
+        <button type="button" class="btn primary" id="claim-offer-btn">Termin übernehmen</button>
+      </div>
     `;
 
     $("#claim-offer-btn")?.addEventListener("click", claimWaitlistOffer);
+    $("#decline-offer-btn")?.addEventListener("click", declineWaitlistOffer);
   }
 
   async function loadWaitlistOffer() {
     const token = getWaitlistToken();
     if (!token) {
-      renderOfferError("Der SMS-Link enthält kein gültiges Angebot.");
+      renderOfferError("Die Demo-Notification enthält kein gültiges Angebot.");
       return;
     }
 
@@ -838,7 +921,7 @@
       const { res, data } = await apiFetch("/api/waitlist-offer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token, action: "accept" }),
       });
       if (!res.ok) throw new Error(data.error || "Buchung fehlgeschlagen");
       const container = $("#waitlist-offer-container");
@@ -851,6 +934,33 @@
       }
     } catch (err) {
       renderOfferError(err.message || "Buchung fehlgeschlagen");
+    }
+  }
+
+  async function declineWaitlistOffer() {
+    const token = getWaitlistToken();
+    const btn = $("#decline-offer-btn");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Wird abgelehnt…";
+    }
+
+    try {
+      const { res, data } = await apiFetch("/api/waitlist-offer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, action: "decline" }),
+      });
+      if (!res.ok) throw new Error(data.error || "Ablehnen fehlgeschlagen");
+      const container = $("#waitlist-offer-container");
+      if (container) {
+        container.innerHTML = `
+          <h2>Alles klar, danke!</h2>
+          <p class="claim-note">Der Salon gibt den freien Slot in der Demo an den nächsten passenden Wartelistenkunden weiter.</p>
+        `;
+      }
+    } catch (err) {
+      renderOfferError(err.message || "Ablehnen fehlgeschlagen");
     }
   }
 

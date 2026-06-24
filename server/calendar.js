@@ -314,6 +314,12 @@ async function listBookings() {
   return sortBookings(bookings.map((b) => ({ ...b, source: "server" })));
 }
 
+function resetBookings(nextBookings = []) {
+  bookings.splice(0, bookings.length, ...nextBookings);
+  saveStoredBookings();
+  return sortBookings(bookings.map((b) => ({ ...b, source: "server" })));
+}
+
 module.exports = {
   initGoogleCalendar,
   getAvailableSlots,
@@ -322,4 +328,5 @@ module.exports = {
   deleteBooking,
   getBookings: () => sortBookings(bookings),
   listBookings,
+  resetBookings,
 };
