@@ -337,10 +337,108 @@
 
   const ADMIN_USER_STORAGE = "booking_admin_user";
   const ADMIN_STORAGE = "booking_admin_key";
+  const LOCAL_WAITLIST_STORAGE = "booking_demo_waitlist";
   const adminState = {
     bookings: [],
     waitlist: { entries: [], offers: [], notifications: [] },
   };
+
+  function nextBusinessDateKey(daysAhead = 1) {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + daysAhead);
+    while (date.getDay() === 0 || date.getDay() === 6) {
+      date.setDate(date.getDate() + 1);
+    }
+    return toDateInputValue(date);
+  }
+
+  function demoLocalIso(dateKey, hour) {
+    const date = parseLocalDate(dateKey);
+    date.setHours(hour, 0, 0, 0);
+    return date.toISOString();
+  }
+
+  function getLocalWaitlist() {
+    try {
+      const data = JSON.parse(localStorage.getItem(LOCAL_WAITLIST_STORAGE) || "{}");
+      return {
+        entries: Array.isArray(data.entries) ? data.entries : [],
+        offers: Array.isArray(data.offers) ? data.offers : [],
+        campaigns: Array.isArray(data.campaigns) ? data.campaigns : [],
+        notifications: Array.isArray(data.notifications) ? data.notifications : [],
+      };
+    } catch {
+      return { entries: [], offers: [], campaigns: [], notifications: [] };
+    }
+  }
+
+  function saveLocalWaitlist(data) {
+    localStorage.setItem(LOCAL_WAITLIST_STORAGE, JSON.stringify(data));
+  }
+
+  function localDemoBooking({ id, date, hour, name, email, service, staff, notes }) {
+    const start = demoLocalIso(date, hour);
+    return {
+      id,
+      date,
+      start,
+      end: new Date(new Date(start).getTime() + SLOT_MINUTES * 60000).toISOString(),
+      name,
+      email,
+      phone: "",
+      notes: notes || "",
+      service,
+      staff: staff || DEFAULT_STAFF,
+      durationMinutes: SLOT_MINUTES,
+      waitlistEntryId: "",
+      source: "browser",
+    };
+  }
+
+  function localDemoEntry({ id, name, phone, email, service, date, earliestTime, latestTime, ranking, currentAppointmentTime, staffPreference, notes }) {
+    return {
+      id,
+      name,
+      phone,
+      email,
+      service,
+      durationMinutes: SLOT_MINUTES,
+      staffPreference,
+      preferredDate: date,
+      earliestTime,
+      latestTime,
+      currentAppointmentTime,
+      notes,
+      ranking,
+      status: "active",
+      createdAt: new Date(Date.now() - ranking * 60000).toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  function seedLocalDemoData() {
+    const date = nextBusinessDateKey(1);
+    const bookings = [
+      localDemoBooking({ id: "demo-booking-1000", date, hour: 10, name: "Lena Hofmann", email: "lena@example.com", service: "Haare schneiden", staff: "Sophie", notes: "10:00 Haarschnitt." }),
+      localDemoBooking({ id: "demo-booking-1100", date, hour: 11, name: "Marie Klein", email: "marie@example.com", service: "Haare färben", staff: "Sophie", notes: "11:00 Farbe." }),
+      localDemoBooking({ id: "demo-booking-cancel", date, hour: 14, name: "Mia Schneider", email: "mia@example.com", service: "Haare färben", staff: "Sophie", notes: "14:00 Farbe - diesen Termin in der Demo absagen." }),
+      localDemoBooking({ id: "demo-booking-1600", date, hour: 16, name: "Laura Becker", email: "laura@example.com", service: "Haare schneiden", staff: "Sophie", notes: "16:00 Haarschnitt." }),
+    ];
+    const waitlist = {
+      entries: [
+        localDemoEntry({ id: "demo-entry-anna", name: "Anna Müller", phone: "+49 170 1111111", email: "anna@example.com", service: "Haare färben", date, earliestTime: "13:30", latestTime: "15:30", ranking: 10, currentAppointmentTime: "17:00", staffPreference: "Sophie", notes: "Hat 17:00 geplant und möchte gerne früher kommen." }),
+        localDemoEntry({ id: "demo-entry-ben", name: "Ben Fischer", phone: "+49 170 2222222", email: "ben@example.com", service: "Haare färben", date, earliestTime: "14:00", latestTime: "17:00", ranking: 3, currentAppointmentTime: "17:30", staffPreference: "Egal", notes: "Zweite passende Option für First-Come." }),
+        localDemoEntry({ id: "demo-entry-clara", name: "Clara Neumann", phone: "+49 170 3333333", email: "clara@example.com", service: "Haarstyling", date, earliestTime: "10:00", latestTime: "15:00", ranking: 1, currentAppointmentTime: "18:00", staffPreference: "Sophie", notes: "Passt bewusst nicht, weil der Service ein anderer ist." }),
+      ],
+      offers: [],
+      campaigns: [],
+      notifications: [],
+    };
+    localStorage.setItem("bookings", JSON.stringify(bookings));
+    saveLocalWaitlist(waitlist);
+    return { bookings, waitlist };
+  }
 
   function escapeHtml(text) {
     const d = document.createElement("div");
@@ -400,6 +498,146 @@
     }
     if (entry.staffPreference) parts.push(`Mitarbeiter: ${entry.staffPreference}`);
     return parts.length ? parts.join(" · ") : "Flexibel";
+  }
+
+  function clockToMinutes(value) {
+    const [hours, minutes] = String(value || "00:00").split(":").map(Number);
+    return hours * 60 + minutes;
+  }
+
+  function localSlotMinutes(start) {
+    const date = new Date(start);
+    return date.getHours() * 60 + date.getMinutes();
+  }
+
+  function localWaitlistMatches(entry, booking) {
+    if (entry.status !== "active") return false;
+    if ((entry.service || "").toLowerCase() !== (booking.service || "").toLowerCase()) return false;
+    if (entry.preferredDate && entry.preferredDate !== booking.date) return false;
+    const preference = String(entry.staffPreference || "").toLowerCase();
+    if (preference && !["egal", "beliebig", "any"].includes(preference) && preference !== String(booking.staff || "").toLowerCase()) {
+      return false;
+    }
+    const startMinutes = localSlotMinutes(booking.start);
+    if (entry.earliestTime && startMinutes < clockToMinutes(entry.earliestTime)) return false;
+    if (entry.latestTime && startMinutes + SLOT_MINUTES > clockToMinutes(entry.latestTime)) return false;
+    return true;
+  }
+
+  function createLocalNotification(entry, booking, offer) {
+    const time = formatBookingTime(booking.start);
+    const message = `Hallo ${entry.name} 👋\n\nEin früherer Termin ist verfügbar:\nHeute ${time} statt ${entry.currentAppointmentTime || "17:00"}.\n\nMöchtest du den Termin übernehmen?`;
+    return {
+      id: `local-notification-${Date.now()}-${entry.id}`,
+      offerId: offer.id,
+      entryId: entry.id,
+      token: offer.token,
+      channel: "whatsapp-demo",
+      customerName: entry.name,
+      to: entry.phone,
+      message,
+      actionLabel: "Termin übernehmen",
+      declineLabel: "Nein danke",
+      status: "delivered",
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  function createLocalOffersForCancellation(booking) {
+    const waitlist = getLocalWaitlist();
+    const matches = waitlist.entries
+      .filter((entry) => localWaitlistMatches(entry, booking))
+      .sort((a, b) => (Number(b.ranking) || 0) - (Number(a.ranking) || 0))
+      .slice(0, 4);
+    const campaign = {
+      id: `local-campaign-${Date.now()}`,
+      strategy: "first-come",
+      status: matches.length ? "open" : "expired",
+      slot: {
+        date: booking.date,
+        start: booking.start,
+        end: booking.end,
+        service: booking.service,
+        staff: booking.staff,
+      },
+      candidateEntryIds: matches.map((entry) => entry.id),
+      createdAt: new Date().toISOString(),
+    };
+    const offers = matches.map((entry) => ({
+      id: `local-offer-${Date.now()}-${entry.id}`,
+      campaignId: campaign.id,
+      entryId: entry.id,
+      token: `local-token-${Date.now()}-${entry.id}`,
+      strategy: "first-come",
+      status: "pending",
+      slot: campaign.slot,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60000).toISOString(),
+      createdAt: new Date().toISOString(),
+    }));
+    const notifications = offers.map((offer) => {
+      const entry = matches.find((item) => item.id === offer.entryId);
+      return createLocalNotification(entry, booking, offer);
+    });
+
+    waitlist.campaigns.unshift(campaign);
+    waitlist.offers.unshift(...offers);
+    waitlist.notifications.unshift(...notifications);
+    saveLocalWaitlist(waitlist);
+    return { matches, offers, campaign };
+  }
+
+  function localClaimOffer(token) {
+    const waitlist = getLocalWaitlist();
+    const offer = waitlist.offers.find((item) => item.token === token);
+    if (!offer || offer.status !== "pending") throw new Error("Dieses Demo-Angebot ist nicht mehr verfügbar");
+    const entry = waitlist.entries.find((item) => item.id === offer.entryId);
+    if (!entry) throw new Error("Wartelistenkunde nicht gefunden");
+
+    const bookings = getLocalBookings();
+    bookings.push({
+      id: `local-rescue-${Date.now()}`,
+      date: offer.slot.date,
+      start: offer.slot.start,
+      end: new Date(new Date(offer.slot.start).getTime() + SLOT_MINUTES * 60000).toISOString(),
+      name: entry.name,
+      email: entry.email,
+      phone: entry.phone,
+      notes: entry.notes,
+      service: entry.service,
+      staff: offer.slot.staff || entry.staffPreference || DEFAULT_STAFF,
+      durationMinutes: SLOT_MINUTES,
+      waitlistEntryId: entry.id,
+      source: "browser",
+    });
+    localStorage.setItem("bookings", JSON.stringify(bookings));
+
+    offer.status = "booked";
+    offer.claimedAt = new Date().toISOString();
+    entry.status = "booked";
+    for (const notification of waitlist.notifications) {
+      if (notification.offerId === offer.id) notification.status = "accepted";
+      const otherOffer = waitlist.offers.find((item) => item.id === notification.offerId);
+      if (otherOffer?.campaignId === offer.campaignId && otherOffer.id !== offer.id && otherOffer.status === "pending") {
+        otherOffer.status = "superseded";
+        notification.status = "superseded";
+      }
+    }
+    const campaign = waitlist.campaigns.find((item) => item.id === offer.campaignId);
+    if (campaign) campaign.status = "booked";
+    saveLocalWaitlist(waitlist);
+    return { booking: bookings[bookings.length - 1], offer };
+  }
+
+  function localDeclineOffer(token) {
+    const waitlist = getLocalWaitlist();
+    const offer = waitlist.offers.find((item) => item.token === token);
+    if (!offer || offer.status !== "pending") throw new Error("Dieses Demo-Angebot ist nicht mehr verfügbar");
+    offer.status = "declined";
+    for (const notification of waitlist.notifications) {
+      if (notification.offerId === offer.id) notification.status = "declined";
+    }
+    saveLocalWaitlist(waitlist);
+    return { offer };
   }
 
   function demoBookingForSlot(bookings, slotKey) {
@@ -695,6 +933,8 @@
         );
         return true;
       }
+      adminState.bookings = local;
+      renderDemoDashboard();
       container.innerHTML = `<p class="empty">${escapeHtml(err.message)}</p>`;
       setAdminStatus(err.message, "error");
       return false;
@@ -724,7 +964,16 @@
       renderDemoDashboard();
       return true;
     } catch (err) {
-      container.innerHTML = `<p class="empty">${escapeHtml(err.message)}</p>`;
+      const localWaitlist = getLocalWaitlist();
+      if (localWaitlist.entries.length || localWaitlist.notifications.length) {
+        adminState.waitlist = localWaitlist;
+        renderWaitlist(localWaitlist);
+        renderDemoDashboard();
+        return true;
+      }
+      adminState.waitlist = localWaitlist;
+      renderDemoDashboard();
+      container.innerHTML = '<p class="empty">GitHub-Pages-Demo: Klicke auf „Demo-Daten laden“, um die lokale Präsentation zu starten.</p>';
       return false;
     }
   }
@@ -756,7 +1005,9 @@
       await resetDemoData({ confirmFirst: false });
       setAdminStatus("Demo-Daten automatisch geladen: Kalender und Warteliste sind bereit.", "ok");
     } catch {
-      // If the API is unavailable, the existing fallback/error UI remains visible.
+      seedLocalDemoData();
+      await refreshAdminDemo();
+      setAdminStatus("GitHub-Pages-Demo geladen: Alles läuft lokal im Browser.", "ok");
     }
   }
 
@@ -812,12 +1063,17 @@
     btn.textContent = action === "accept" ? "Wird übernommen…" : "Wird abgelehnt…";
 
     try {
-      const { res, data } = await apiFetch("/api/waitlist-offer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, action }),
-      });
-      if (!res.ok) throw new Error(data.error || "Demo-Aktion fehlgeschlagen");
+      try {
+        const { res, data } = await apiFetch("/api/waitlist-offer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, action }),
+        });
+        if (!res.ok) throw new Error(data.error || "Demo-Aktion fehlgeschlagen");
+      } catch {
+        if (action === "accept") localClaimOffer(token);
+        else localDeclineOffer(token);
+      }
       await refreshAdminDemo();
       setAdminStatus(
         action === "accept"
@@ -848,7 +1104,9 @@
       const didReset = await resetDemoData({ confirmFirst: true });
       if (didReset) setAdminStatus("Demo zurückgesetzt: Beispieltermine und Warteliste sind bereit.", "ok");
     } catch (err) {
-      showError(err.message || "Demo-Reset fehlgeschlagen");
+      seedLocalDemoData();
+      await refreshAdminDemo();
+      setAdminStatus("GitHub-Pages-Demo zurückgesetzt: lokale Beispieldaten sind bereit.", "ok");
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -862,8 +1120,10 @@
   }
 
   function deleteLocalBooking(id) {
-    const bookings = getLocalBookings().filter((booking) => String(booking.id) !== String(id));
-    localStorage.setItem("bookings", JSON.stringify(bookings));
+    const bookings = getLocalBookings();
+    const deleted = bookings.find((booking) => String(booking.id) === String(id));
+    localStorage.setItem("bookings", JSON.stringify(bookings.filter((booking) => String(booking.id) !== String(id))));
+    return deleted;
   }
 
   async function handleDeleteBooking(e) {
@@ -882,7 +1142,14 @@
     try {
       let waitlistMessage = "";
       if (source === "browser") {
-        deleteLocalBooking(id);
+        const deleted = deleteLocalBooking(id);
+        if (deleted) {
+          const result = createLocalOffersForCancellation(deleted);
+          const offerCount = result.offers?.length || 0;
+          waitlistMessage = offerCount
+            ? `${offerCount} passende Demo-Notification${offerCount === 1 ? "" : "s"} erzeugt.`
+            : "Absage verarbeitet. Kein passender Wartelistenkunde gefunden.";
+        }
       } else {
         const user = sessionStorage.getItem(ADMIN_USER_STORAGE) || "";
         const key = sessionStorage.getItem(ADMIN_STORAGE) || "";

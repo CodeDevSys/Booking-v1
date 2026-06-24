@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - cursor/automated-waitlist-6c53
   workflow_dispatch:
 
 permissions:
@@ -31,7 +32,7 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir _site
-          cp index.html admin.html script.js style.css _site/
+          cp index.html admin.html waitlist.html script.js style.css _site/
           touch _site/.nojekyll
 
       - name: Upload artifact
