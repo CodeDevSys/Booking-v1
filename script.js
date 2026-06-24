@@ -675,12 +675,54 @@
     const iconEl = $("#demo-overlay-icon");
     const titleEl = $("#demo-overlay-title");
     const textEl = $("#demo-overlay-text");
-    if (!overlay || !iconEl || !titleEl || !textEl) return;
+    const contentEl = $("#demo-overlay-content");
+    if (!overlay || !iconEl || !titleEl || !textEl || !contentEl) return;
     iconEl.textContent = icon;
     titleEl.textContent = title;
     textEl.textContent = text;
+    contentEl.innerHTML = "";
+    overlay.classList.remove("interactive");
     overlay.hidden = false;
     requestAnimationFrame(() => overlay.classList.add("active"));
+  }
+
+  function showTakeoverOverlay(token) {
+    const overlay = $("#demo-overlay");
+    const iconEl = $("#demo-overlay-icon");
+    const titleEl = $("#demo-overlay-title");
+    const textEl = $("#demo-overlay-text");
+    const contentEl = $("#demo-overlay-content");
+    if (!overlay || !iconEl || !titleEl || !textEl || !contentEl) return;
+    iconEl.textContent = "📱";
+    titleEl.textContent = "Kunden-Nachricht";
+    textEl.textContent = "Die Simulation bleibt stehen, bis der Kunde den Termin übernimmt.";
+    contentEl.innerHTML = `
+      <div class="takeover-demo">
+        <div class="takeover-pane system-view">
+          <span class="pane-label">System / Admin Sicht</span>
+          <h3>📤 Nachricht gesendet</h3>
+          <p><strong>An:</strong> Sophie</p>
+          <p><strong>Termin:</strong> 14:00</p>
+          <p><strong>Service:</strong> Farbe</p>
+          <p><strong>Status:</strong> ✅ zugestellt</p>
+        </div>
+        <div class="takeover-pane customer-view">
+          <span class="pane-label">Kundenansicht Simulation</span>
+          <h3>📱 WhatsApp-style Nachricht</h3>
+          <div class="phone-message">
+            <strong>Sophie 👤</strong>
+            <p>Hallo Sophie 👋</p>
+            <p>Ein Termin ist frei geworden:</p>
+            <p><strong>Heute 14:00<br>Farbe</strong></p>
+            <button type="button" class="btn primary big" id="overlay-takeover-btn">Termin übernehmen</button>
+          </div>
+        </div>
+      </div>
+    `;
+    overlay.classList.add("interactive");
+    overlay.hidden = false;
+    requestAnimationFrame(() => overlay.classList.add("active"));
+    $("#overlay-takeover-btn")?.addEventListener("click", () => finishOverlayTakeover(token));
   }
 
   function hideDemoOverlay() {
@@ -690,6 +732,27 @@
     setTimeout(() => {
       if (!overlay.classList.contains("active")) overlay.hidden = true;
     }, 260);
+  }
+
+  async function finishOverlayTakeover(token) {
+    const btn = $("#overlay-takeover-btn");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Wird übernommen...";
+    }
+    localClaimOffer(token);
+    await refreshAdminDemo();
+    showDemoOverlay("✔", "Kunde hat den Termin angenommen", "Sophie bestätigt den freigewordenen Termin.");
+    schedulerTimers.push(setTimeout(() => {
+      hideDemoOverlay();
+    }, 3300));
+    schedulerTimers.push(setTimeout(() => {
+      showDemoOverlay("✔", "Termin erfolgreich übernommen", "14:00 Sophie — BESTÄTIGT");
+    }, 4700));
+    schedulerTimers.push(setTimeout(() => {
+      hideDemoOverlay();
+      overlaySequenceRunning = false;
+    }, 8200));
   }
 
   function setLocalSchedulerPhase(phase) {
@@ -716,28 +779,28 @@
 
     schedulerTimers.push(setTimeout(() => {
       showDemoOverlay("🧠", "Automatische Terminabsage erkannt", "14:00 Maria — Farbe — ABGESAGT");
-    }, 700));
+    }, 5000));
 
     schedulerTimers.push(setTimeout(() => {
       hideDemoOverlay();
-    }, 2700));
+    }, 8500));
 
     schedulerTimers.push(setTimeout(() => {
       showDemoOverlay("🔍", "Passender Kunde wird gesucht", "Freier Slot: 14:00 — Farbe");
       setLocalSchedulerPhase("matched");
-    }, 3300));
+    }, 10000));
 
     schedulerTimers.push(setTimeout(() => {
       hideDemoOverlay();
-    }, 5300));
+    }, 13500));
 
     schedulerTimers.push(setTimeout(() => {
-      showDemoOverlay("👤", "Passender Kunde gefunden", "Sophie\n✓ Service passt\n✓ Zeit passt\n✓ Mitarbeiter passt");
-    }, 5900));
+      showDemoOverlay("👤", "Passender Kunde gefunden", "Sophie\n\n✓ Farbe\n✓ verfügbar\n✓ passt zum Zeitpunkt");
+    }, 15000));
 
     schedulerTimers.push(setTimeout(() => {
       hideDemoOverlay();
-    }, 7900));
+    }, 18500));
 
     schedulerTimers.push(setTimeout(() => {
       createLocalOffersForCancellation(cancelled);
@@ -745,31 +808,20 @@
       adminState.waitlist = nextWaitlist;
       renderWaitlist(nextWaitlist);
       renderAdminBookings(getLocalBookings());
-      showDemoOverlay("📤", "Benachrichtigung wurde gesendet", "Hallo Sophie 👋\n\nEin Termin ist frei geworden:\nHeute 14:00\nFarbe\n\nMöchtest du übernehmen?");
-    }, 8500));
+      showDemoOverlay("📤", "Benachrichtigung wurde gesendet", "Die Kunden-Nachricht wurde vorbereitet und zugestellt.");
+    }, 20000));
 
     schedulerTimers.push(setTimeout(() => {
       hideDemoOverlay();
-    }, 10800));
+    }, 23500));
 
     schedulerTimers.push(setTimeout(() => {
-      showDemoOverlay("📱", "Kunde akzeptiert den Termin", "Sophie übernimmt den freien Slot automatisch.");
-    }, 11400));
-
-    schedulerTimers.push(setTimeout(async () => {
       const latestWaitlist = getLocalWaitlist();
       const sophieOffer = latestWaitlist.offers.find((offer) =>
         offer.entryId === "demo-entry-sophie" && offer.status === "pending"
       );
-      if (sophieOffer) localClaimOffer(sophieOffer.token);
-      await refreshAdminDemo();
-      showDemoOverlay("✔", "Termin übernommen", "14:00 Sophie — BESTÄTIGT");
-    }, 13500));
-
-    schedulerTimers.push(setTimeout(() => {
-      hideDemoOverlay();
-      overlaySequenceRunning = false;
-    }, 16000));
+      if (sophieOffer) showTakeoverOverlay(sophieOffer.token);
+    }, 25000));
   }
 
   function demoBookingForSlot(bookings, slotKey) {

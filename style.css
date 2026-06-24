@@ -767,6 +767,7 @@ body {
 
 .demo-overlay.active {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .demo-overlay-card {
@@ -779,6 +780,11 @@ body {
   box-shadow: 0 28px 70px rgba(0, 0, 0, 0.42);
   transform: translateY(12px) scale(0.98);
   transition: transform 0.26s ease;
+}
+
+.demo-overlay.interactive .demo-overlay-card {
+  width: min(920px, 100%);
+  text-align: left;
 }
 
 .demo-overlay.active .demo-overlay-card {
@@ -799,6 +805,66 @@ body {
   margin: 0.85rem 0 0;
   color: var(--muted);
   white-space: pre-line;
+}
+
+#demo-overlay-content {
+  margin-top: 1.25rem;
+}
+
+.takeover-demo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.takeover-pane {
+  padding: 1rem;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.system-view {
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+.customer-view {
+  border-color: rgba(110, 231, 183, 0.35);
+}
+
+.pane-label {
+  display: block;
+  margin-bottom: 0.65rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.takeover-pane h3 {
+  margin: 0 0 0.75rem;
+}
+
+.takeover-pane p {
+  margin: 0.45rem 0;
+}
+
+.phone-message {
+  padding: 1rem;
+  background: #133629;
+  border-radius: 16px 16px 16px 4px;
+}
+
+.phone-message .btn {
+  margin-top: 0.75rem;
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  .takeover-demo {
+    grid-template-columns: 1fr;
+  }
 }
 
 .notification-list {
