@@ -769,6 +769,11 @@
     schedulerTimers.push(setTimeout(() => {
       hideDemoOverlay();
       overlaySequenceRunning = false;
+      const btn = $("#analyse-btn");
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Analyse";
+      }
     }, 8200));
   }
 
@@ -1196,7 +1201,6 @@
         adminState.waitlist = localWaitlist;
         renderWaitlist(localWaitlist);
         renderDemoDashboard();
-        startLocalSchedulerDemoIfNeeded();
         return true;
       }
       adminState.waitlist = localWaitlist;
@@ -1217,7 +1221,6 @@
     clearSchedulerTimers();
     seedLocalDemoData({ preserveCustomerBookings: !confirmFirst });
     await refreshAdminDemo();
-    startLocalSchedulerDemoIfNeeded();
     return true;
   }
 
@@ -1226,11 +1229,32 @@
     if (!demoAutoSeeded || !versionMatches || !hasCurrentLocalDemoData()) {
       demoAutoSeeded = true;
       await resetDemoData({ confirmFirst: false });
-      setAdminStatus("Demo-Daten geladen: Smart Scheduler startet automatisch.", "ok");
+      setAdminStatus("Demo-Daten geladen. Klicke auf Analyse, um die Demo zu starten.", "ok");
       return;
     }
     demoAutoSeeded = true;
-    startLocalSchedulerDemoIfNeeded();
+  }
+
+  async function handleAnalyse() {
+    const btn = $("#analyse-btn");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Analyse läuft…";
+    }
+    try {
+      clearSchedulerTimers();
+      seedLocalDemoData({ preserveCustomerBookings: true });
+      await refreshAdminDemo();
+      startLocalSchedulerDemoIfNeeded();
+      if (!overlaySequenceRunning && btn) {
+        btn.disabled = false;
+        btn.textContent = "Analyse";
+      }
+      setAdminStatus("Analyse gestartet.", "ok");
+    } catch (err) {
+      showError(err.message || "Analyse konnte nicht gestartet werden");
+      if (btn) btn.disabled = false;
+    }
   }
 
   async function handleWaitlistSubmit(e) {
@@ -1324,7 +1348,7 @@
 
     try {
       const didReset = await resetDemoData({ confirmFirst: true });
-      if (didReset) setAdminStatus("Demo zurückgesetzt: Smart Scheduler startet automatisch.", "ok");
+      if (didReset) setAdminStatus("Demo zurückgesetzt. Klicke auf Analyse, um die Demo zu starten.", "ok");
     } catch (err) {
       showError(err.message || "Demo-Reset fehlgeschlagen");
     } finally {
@@ -1335,6 +1359,11 @@
       if (heroBtn) {
         heroBtn.disabled = false;
         heroBtn.textContent = "Demo-Daten laden";
+      }
+      const analyseBtn = $("#analyse-btn");
+      if (analyseBtn) {
+        analyseBtn.disabled = false;
+        analyseBtn.textContent = "Analyse";
       }
     }
   }
@@ -1487,6 +1516,7 @@
     });
     $("#refresh-waitlist-btn")?.addEventListener("click", loadWaitlist);
     $("#demo-reset-btn")?.addEventListener("click", handleDemoReset);
+    $("#analyse-btn")?.addEventListener("click", handleAnalyse);
     $("#demo-reset-hero-btn")?.addEventListener("click", handleDemoReset);
     $("#waitlist-form")?.addEventListener("submit", handleWaitlistSubmit);
     $("#bookings-container")?.addEventListener("click", handleDeleteBooking);
