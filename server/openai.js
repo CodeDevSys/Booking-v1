@@ -24,7 +24,7 @@ async function parseBookingIntent(message, context = {}) {
     };
   }
 
-  const system = `Du hilfst Nutzern auf Deutsch dabei, Friseurtermine für diese Services zu buchen: Haare schneiden, Haarstyling, Haare färben. Öffnungszeiten: ${process.env.BUSINESS_START || 9}:00–${process.env.BUSINESS_END || 17}:00, Mo–Fr, Slots à ${process.env.SLOT_MINUTES || 60} Minuten.
+  const system = `Du hilfst Nutzern auf Deutsch dabei, Friseurtermine für diese Services zu buchen: Haare schneiden (45 Minuten, 35 €), Haarstyling (30 Minuten, 25 €), Haare färben (120 Minuten, 90 €). Öffnungszeiten: ${process.env.BUSINESS_START || 9}:00–${process.env.BUSINESS_END || 17}:00, Mo–Fr, Slots à ${process.env.SLOT_MINUTES || 60} Minuten.
 Heute ist ${new Date().toISOString().split("T")[0]}.
 Antworte ausschließlich mit JSON: {"reply":"freundliche Nachricht auf Deutsch","action":"none"|"suggest_date"|"suggest_booking","date":"YYYY-MM-DD oder null","time":"HH:MM 24h oder null","name":null,"email":null,"service":null}.
 Context: ${JSON.stringify(context)}`;
