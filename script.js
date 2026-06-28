@@ -205,7 +205,6 @@
     } catch {
       slots = generateClientSlots(dateStr);
       state.offlineMode = true;
-      showError("Demo-Modus: Zeiten werden lokal angezeigt. Verbinde die API, um Termine auf dem Server zu speichern.");
     }
 
     if (dateStr !== state.date) return;
