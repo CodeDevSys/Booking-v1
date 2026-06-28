@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const DEFAULT_SERVICE = "Haare schneiden";
+  const DEFAULT_SERVICE = "Haare schneiden · 45 Min · 35 €";
   const DEMO_STAFF = "Sophie";
   const SLOT_MINUTES = 60;
   const BUSINESS_START = 9;
@@ -354,6 +354,13 @@
     return date.toISOString();
   }
 
+  function localServiceDuration(service) {
+    if (String(service).includes("120 Min")) return 120;
+    if (String(service).includes("45 Min")) return 45;
+    if (String(service).includes("30 Min")) return 30;
+    return SLOT_MINUTES;
+  }
+
   function getLocalWaitlist() {
     try {
       const data = JSON.parse(localStorage.getItem(LOCAL_WAITLIST_STORAGE) || "{}");
@@ -375,11 +382,12 @@
 
   function localDemoBooking({ id, date, hour, minute, name, email, service, staff, status, notes }) {
     const start = demoLocalIso(date, hour, minute || 0);
+    const durationMinutes = localServiceDuration(service);
     return {
       id,
       date,
       start,
-      end: new Date(new Date(start).getTime() + SLOT_MINUTES * 60000).toISOString(),
+      end: new Date(new Date(start).getTime() + durationMinutes * 60000).toISOString(),
       name,
       email,
       phone: "",
@@ -387,7 +395,7 @@
       service,
       staff: staff || DEMO_STAFF,
       status: status || "confirmed",
-      durationMinutes: SLOT_MINUTES,
+      durationMinutes,
       waitlistEntryId: "",
       source: "browser",
     };
@@ -400,7 +408,7 @@
       phone,
       email,
       service,
-      durationMinutes: SLOT_MINUTES,
+      durationMinutes: localServiceDuration(service),
       staffPreference,
       preferredDate: date,
       earliestTime,
@@ -425,18 +433,18 @@
       ? getLocalBookings().filter((booking) => !isDemoBooking(booking))
       : [];
     const demoBookings = [
-      localDemoBooking({ id: "demo-booking-0900", date, hour: 9, name: "Anna", email: "anna.termin@example.com", service: "Haarschnitt", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
-      localDemoBooking({ id: "demo-booking-1100", date, hour: 11, name: "Lisa", email: "lisa@example.com", service: "Farbe", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
-      localDemoBooking({ id: "demo-booking-cancel", date, hour: 14, name: "Maria", email: "maria@example.com", service: "Farbe", staff: "Sophie", status: "cancelled", notes: "Kunde hat abgesagt - freier Slot erkannt." }),
-      localDemoBooking({ id: "demo-booking-1600", date, hour: 16, name: "Thomas", email: "thomas@example.com", service: "Styling", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
+      localDemoBooking({ id: "demo-booking-0900", date, hour: 9, name: "Anna", email: "anna.termin@example.com", service: "Haare schneiden · 45 Min · 35 €", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
+      localDemoBooking({ id: "demo-booking-1100", date, hour: 11, name: "Lisa", email: "lisa@example.com", service: "Haare färben · 120 Min · 90 €", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
+      localDemoBooking({ id: "demo-booking-cancel", date, hour: 14, name: "Maria", email: "maria@example.com", service: "Haare färben · 120 Min · 90 €", staff: "Sophie", status: "cancelled", notes: "Kunde hat abgesagt - freier Slot erkannt." }),
+      localDemoBooking({ id: "demo-booking-1600", date, hour: 16, name: "Thomas", email: "thomas@example.com", service: "Haarstyling · 30 Min · 25 €", staff: "Sophie", notes: "Demo-Termin: bestätigt." }),
     ];
     const bookings = [...existingCustomerBookings, ...demoBookings]
       .sort((a, b) => new Date(a.start || 0).getTime() - new Date(b.start || 0).getTime());
     const waitlist = {
       entries: [
-        localDemoEntry({ id: "demo-entry-sara", name: "Sara", phone: "+49 170 1111111", email: "sara@example.com", service: "Farbe", date, earliestTime: "13:30", latestTime: "15:00", ranking: 10, currentAppointmentTime: "17:00", staffPreference: "Sophie", notes: "Passt perfekt zum freigewordenen Farbtermin." }),
-        localDemoEntry({ id: "demo-entry-julia", name: "Julia", phone: "+49 170 2222222", email: "julia@example.com", service: "Farbe", date, earliestTime: "14:00", latestTime: "17:00", ranking: 3, currentAppointmentTime: "17:30", staffPreference: "Egal", notes: "Zweite passende Wartelisten-Kundin." }),
-        localDemoEntry({ id: "demo-entry-clara", name: "Clara", phone: "+49 170 3333333", email: "clara@example.com", service: "Styling", date, earliestTime: "10:00", latestTime: "15:00", ranking: 1, currentAppointmentTime: "18:00", staffPreference: "Sophie", notes: "Passt bewusst nicht, weil der Service ein anderer ist." }),
+        localDemoEntry({ id: "demo-entry-sara", name: "Sara", phone: "+49 170 1111111", email: "sara@example.com", service: "Haare färben · 120 Min · 90 €", date, earliestTime: "13:30", latestTime: "16:00", ranking: 10, currentAppointmentTime: "17:00", staffPreference: "Sophie", notes: "Passt perfekt zum freigewordenen Farbtermin." }),
+        localDemoEntry({ id: "demo-entry-julia", name: "Julia", phone: "+49 170 2222222", email: "julia@example.com", service: "Haare färben · 120 Min · 90 €", date, earliestTime: "14:00", latestTime: "17:00", ranking: 3, currentAppointmentTime: "17:30", staffPreference: "Egal", notes: "Zweite passende Wartelisten-Kundin." }),
+        localDemoEntry({ id: "demo-entry-clara", name: "Clara", phone: "+49 170 3333333", email: "clara@example.com", service: "Haarstyling · 30 Min · 25 €", date, earliestTime: "10:00", latestTime: "15:00", ranking: 1, currentAppointmentTime: "18:00", staffPreference: "Sophie", notes: "Passt bewusst nicht, weil der Service ein anderer ist." }),
       ],
       offers: [],
       campaigns: [],
@@ -455,7 +463,7 @@
     return bookings.some((booking) =>
       booking.id === "demo-booking-cancel" &&
       booking.name === "Maria" &&
-      booking.service === "Farbe" &&
+      booking.service === "Haare färben · 120 Min · 90 €" &&
       booking.status === "cancelled"
     ) && waitlist.entries.some((entry) => entry.id === "demo-entry-sara");
   }
@@ -627,7 +635,7 @@
       id: cancelledBooking?.id || `local-rescue-${Date.now()}`,
       date: offer.slot.date,
       start: offer.slot.start,
-      end: new Date(new Date(offer.slot.start).getTime() + SLOT_MINUTES * 60000).toISOString(),
+      end: new Date(new Date(offer.slot.start).getTime() + entry.durationMinutes * 60000).toISOString(),
       name: entry.name,
       email: entry.email,
       phone: entry.phone,
@@ -635,7 +643,7 @@
       service: entry.service,
       staff: offer.slot.staff || entry.staffPreference || DEMO_STAFF,
       status: "confirmed",
-      durationMinutes: SLOT_MINUTES,
+      durationMinutes: entry.durationMinutes,
       waitlistEntryId: entry.id,
       source: "browser",
     };
@@ -720,7 +728,7 @@
           <h3>📤 Nachricht gesendet</h3>
           <p><strong>An:</strong> Sara</p>
           <p><strong>Termin:</strong> 14:00</p>
-          <p><strong>Service:</strong> Farbe</p>
+          <p><strong>Service:</strong> Haare färben · 120 Min · 90 €</p>
           <p><strong>Status:</strong> ✅ zugestellt</p>
         </div>
         <div class="takeover-pane customer-view">
@@ -730,7 +738,7 @@
             <strong>Sara 👤</strong>
             <p>Hallo Sara 👋</p>
             <p>Ein Termin ist frei geworden:</p>
-            <p><strong>Heute 14:00<br>Farbe</strong></p>
+            <p><strong>Heute 14:00<br>Haare färben · 120 Min · 90 €</strong></p>
             <button type="button" class="btn primary big" id="overlay-takeover-btn">Termin übernehmen</button>
           </div>
         </div>
@@ -800,7 +808,7 @@
     }
 
     schedulerTimers.push(setTimeout(() => {
-      showDemoOverlay("🧠", "Automatische Terminabsage erkannt", "14:00 Maria — Farbe — ABGESAGT");
+      showDemoOverlay("🧠", "Automatische Terminabsage erkannt", "14:00 Maria — Haare färben · 120 Min · 90 € — ABGESAGT");
     }, demoStepStart(0)));
 
     schedulerTimers.push(setTimeout(() => {
@@ -808,7 +816,7 @@
     }, demoStepStart(0) + DEMO_POPUP_VISIBLE_MS));
 
     schedulerTimers.push(setTimeout(() => {
-      showDemoOverlay("🔍", "Passender Kunde wird gesucht", "Freier Slot: 14:00 — Farbe");
+      showDemoOverlay("🔍", "Passender Kunde wird gesucht", "Freier Slot: 14:00 — Haare färben · 120 Min · 90 €");
       setLocalSchedulerPhase("matched");
     }, demoStepStart(1)));
 
@@ -817,7 +825,7 @@
     }, demoStepStart(1) + DEMO_POPUP_VISIBLE_MS));
 
     schedulerTimers.push(setTimeout(() => {
-      showDemoOverlay("👤", "Passender Kunde gefunden", "Sara\n\n✓ Farbe\n✓ verfügbar\n✓ passt zum Zeitpunkt");
+      showDemoOverlay("👤", "Passender Kunde gefunden", "Sara\n\n✓ Haare färben\n✓ 120 Minuten\n✓ 90 €\n✓ verfügbar\n✓ passt zum Zeitpunkt");
     }, demoStepStart(2)));
 
     schedulerTimers.push(setTimeout(() => {
@@ -878,11 +886,11 @@
     const slot14Saved = !!rescuedBooking;
 
     const slotRows = [
-      { time: "10:00", label: "Haarschnitt", booking: demoBookingForSlot(bookings, "10:00") },
-      { time: "11:00", label: "Farbe", booking: demoBookingForSlot(bookings, "11:00") },
-      { time: "14:00", label: "Farbe", booking: demoBookingForSlot(bookings, "14:00"), rescueSlot: true },
+      { time: "10:00", label: "Haare schneiden · 45 Min · 35 €", booking: demoBookingForSlot(bookings, "10:00") },
+      { time: "11:00", label: "Haare färben · 120 Min · 90 €", booking: demoBookingForSlot(bookings, "11:00") },
+      { time: "14:00", label: "Haare färben · 120 Min · 90 €", booking: demoBookingForSlot(bookings, "14:00"), rescueSlot: true },
       { time: "15:00", label: "frei", booking: null },
-      { time: "16:00", label: "Haarschnitt", booking: demoBookingForSlot(bookings, "16:00") },
+      { time: "16:00", label: "Haarstyling · 30 Min · 25 €", booking: demoBookingForSlot(bookings, "16:00") },
     ];
 
     const calendarHtml = slotRows.map((slot) => {
@@ -939,7 +947,7 @@
         <div>
           <h3>Automatisches Planungssystem</h3>
           <div class="system-panel">
-            <div class="system-line ok"><span></span>Service passt: Farbe</div>
+            <div class="system-line ok"><span></span>Service passt: Haare färben · 120 Min · 90 €</div>
             <div class="system-line ok"><span></span>Dauer passt: 60 Minuten</div>
             <div class="system-line ok"><span></span>Mitarbeiter verfügbar: Sophie</div>
             <div class="system-line ok"><span></span>Kunde möchte früher kommen: Anna, 17:00 → 14:00</div>
@@ -1034,7 +1042,7 @@
       <div class="system-line ok"><span></span>Terminabsage erkannt</div>
       <div class="match-result">
         <span>Freier Slot</span>
-        <strong>14:00 - Farbe</strong>
+        <strong>14:00 - Haare färben · 120 Min · 90 €</strong>
         <p>Status: ${phase === "detected" ? "Analysiere Warteliste..." : phase === "matched" ? "Passende Kunden gefunden" : phase === "rescued" ? "Termin gerettet" : "Kunden-Nachricht gesendet"}</p>
       </div>
       ${(phase === "matched" || phase === "notified" || phase === "rescued") ? `

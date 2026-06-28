@@ -7,16 +7,19 @@ const notificationService = require("./notification-service");
 const DATA_DIR = process.env.BOOKINGS_DATA_DIR || path.join(__dirname, "..", "data");
 const WAITLIST_FILE = path.join(DATA_DIR, "waitlist.json");
 const BUSINESS_TIMEZONE = process.env.BUSINESS_TIMEZONE || "Europe/Berlin";
-const DEFAULT_SERVICE = "Haare schneiden";
+const DEFAULT_SERVICE = "Haare schneiden · 45 Min · 35 €";
 const DEFAULT_DURATION_MINUTES = Number(process.env.SLOT_MINUTES) || 60;
 const DEFAULT_BATCH_SIZE = 4;
 const FIRST_COME = "first-come";
 const CASCADE = "cascade";
 
 const SERVICE_DURATIONS = {
-  "Haare schneiden": 60,
-  Haarstyling: 60,
-  "Haare färben": 60,
+  "Haare schneiden": 45,
+  "Haare schneiden · 45 Min · 35 €": 45,
+  Haarstyling: 30,
+  "Haarstyling · 30 Min · 25 €": 30,
+  "Haare färben": 120,
+  "Haare färben · 120 Min · 90 €": 120,
 };
 
 const store = loadStore();
@@ -561,17 +564,18 @@ function demoIso(dateKey, utcHour, utcMinute = 0) {
 
 function demoBooking({ id, date, utcHour, utcMinute, name, email, service, staff, status, notes }) {
   const start = demoIso(date, utcHour, utcMinute || 0);
+  const minutes = serviceDuration(service || DEFAULT_SERVICE);
   return {
     id,
     date,
     start,
-    end: new Date(new Date(start).getTime() + DEFAULT_DURATION_MINUTES * 60000).toISOString(),
+    end: new Date(new Date(start).getTime() + minutes * 60000).toISOString(),
     name,
     email,
     phone: "",
     notes: notes || "",
     service: service || DEFAULT_SERVICE,
-    durationMinutes: DEFAULT_DURATION_MINUTES,
+    durationMinutes: minutes,
     staff: staff || "Sophie",
     status: status || "confirmed",
     waitlistEntryId: "",
@@ -610,7 +614,7 @@ async function resetDemoData() {
       utcHour: 7,
       name: "Anna",
       email: "anna.termin@example.com",
-      service: "Haarschnitt",
+      service: "Haare schneiden · 45 Min · 35 €",
       staff: "Sophie",
       notes: "Demo-Termin: bestätigt.",
     }),
@@ -620,7 +624,7 @@ async function resetDemoData() {
       utcHour: 9,
       name: "Lisa",
       email: "lisa@example.com",
-      service: "Farbe",
+      service: "Haare färben · 120 Min · 90 €",
       staff: "Sophie",
       notes: "Demo-Termin: bestätigt.",
     }),
@@ -630,7 +634,7 @@ async function resetDemoData() {
       utcHour: 12,
       name: "Maria",
       email: "maria@example.com",
-      service: "Farbe",
+      service: "Haare färben · 120 Min · 90 €",
       staff: "Sophie",
       status: "cancelled",
       notes: "Kunde hat abgesagt - freier Slot erkannt.",
@@ -641,7 +645,7 @@ async function resetDemoData() {
       utcHour: 14,
       name: "Thomas",
       email: "thomas@example.com",
-      service: "Styling",
+      service: "Haarstyling · 30 Min · 25 €",
       staff: "Sophie",
       notes: "Demo-Termin: bestätigt.",
     }),
@@ -653,10 +657,10 @@ async function resetDemoData() {
       name: "Sara",
       phone: "+49 170 1111111",
       email: "sara@example.com",
-      service: "Farbe",
+      service: "Haare färben · 120 Min · 90 €",
       date,
       earliestTime: "13:30",
-      latestTime: "15:00",
+      latestTime: "16:00",
       currentAppointmentTime: "17:00",
       staffPreference: "Sophie",
       ranking: 10,
@@ -667,7 +671,7 @@ async function resetDemoData() {
       name: "Julia",
       phone: "+49 170 2222222",
       email: "julia@example.com",
-      service: "Farbe",
+      service: "Haare färben · 120 Min · 90 €",
       date,
       earliestTime: "15:00",
       latestTime: "17:00",
@@ -681,7 +685,7 @@ async function resetDemoData() {
       name: "Clara",
       phone: "+49 170 3333333",
       email: "clara@example.com",
-      service: "Styling",
+      service: "Haarstyling · 30 Min · 25 €",
       date,
       earliestTime: "10:00",
       latestTime: "15:00",

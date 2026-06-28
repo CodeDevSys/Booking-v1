@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const CREDENTIALS_PATH = path.join(__dirname, "credentials.json");
-const DEFAULT_SERVICE = "Haare schneiden";
+const DEFAULT_SERVICE = "Haare schneiden · 45 Min · 35 €";
 const SLOT_MINUTES = Number(process.env.SLOT_MINUTES) || 60;
 const BUSINESS_START = Number(process.env.BUSINESS_START) || 9;
 const BUSINESS_END = Number(process.env.BUSINESS_END) || 17;
