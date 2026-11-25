@@ -2,11 +2,6 @@
 
 Salon appointment booking — customer booking flow and manager admin.
 
-## Live links
-
-- **Booking:** https://booking-mvp.onrender.com  
-- **Admin:** https://booking-mvp.onrender.com/admin.html  
-
 Admin password default: `123456`
 
 ## Local
@@ -52,6 +47,3 @@ Use **Demo zurücksetzen** in the admin area to reload presentation bookings and
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-## NEXORA landing page
-
-Marketing site is separate (branch `nexora-landing`).
